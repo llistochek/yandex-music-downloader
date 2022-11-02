@@ -177,7 +177,7 @@ def prepare_track_path(directory: str, path: str, track: BasicTrackInfo) -> str:
                .replace('#album', track.album.title) \
                .replace('#year', str(track.album.year)) \
                + '.mp3'
-    return os.path.join(directory + '/' + path_part)
+    return os.path.join(directory, path_part)
 
 
 def set_id3_tags(path: str, track: BasicTrackInfo, lyrics: Optional[str]) -> None:
@@ -289,7 +289,7 @@ if __name__ == '__main__':
 
     for track in result_tracks:
         save_path = prepare_track_path(args.dir, args.path_pattern, track)
-        if os.path.isfile(save_path) and args.skip_existing:
+        if args.skip_existing and os.path.isfile(save_path):
             continue
         save_dir = os.path.dirname(save_path)
         cover_path = save_dir + '/cover.jpg'
