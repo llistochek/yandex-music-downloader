@@ -48,7 +48,6 @@ python3 main.py
 3. Выберите вкладку Application
 4. Выберите пункт Cookies->https://music.yandex.ru
 5. Скопируйте значение куки (кликните на значение куки 2 раза -> Ctrl+C):
-    - Куки `spravka` - это аргумент `--spravka`
     - Куки `Session_id` - это аргумент `--sesion-id`
 
 
@@ -58,46 +57,44 @@ python3 main.py
 3. Выберите вкладку Storage
 4. Выберите пункт Куки->https://music.yandex.ru
 5. Скопируйте значение куки (кликните на значение куки 2 раза -> Ctrl+C):
-    - Куки `spravka` - это аргумент `--spravka`
     - Куки `Session_id` - это аргумент `--sesion-id`
 
 ## Использование
 
 ```
 usage: main.py [-h] [--hq] [--skip-existing] [--cover-resolution <Разрешение обложки>] [--add-lyrics] [--delay <Задержка>] [--log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}]
-               (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL) [--dir <Папка>] [--path-pattern <Паттерн>]
-               --session-id <ID сессии> --spravka <Справка> --user-agent <User-Agent>
+(--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL) [--dir <Папка>] [--path-pattern <Паттерн>]
+--session-id <ID сессии> [--user-agent <User-Agent>]
 
 Загрузчик музыки с сервиса Яндекс.Музыка
 
 optional arguments:
-  -h, --help            show this help message and exit
+-h, --help            show this help message and exit
 
 Общие параметры:
-  --hq                  Загружать треки в высоком качестве (по умолчанию: False)
-  --skip-existing       Пропускать уже загруженные треки (по умолчанию: False)
-  --cover-resolution <Разрешение обложки>
-                        (по умолчанию: 400)
-  --add-lyrics          Загружать тексты песен (по умолчанию: False)
-  --delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 0)
-  --log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}
+--hq                  Загружать треки в высоком качестве (по умолчанию: False)
+--skip-existing       Пропускать уже загруженные треки (по умолчанию: False)
+--cover-resolution <Разрешение обложки>
+         (по умолчанию: 400)
+--add-lyrics          Загружать тексты песен (по умолчанию: False)
+--delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 3)
+--log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}
 
 ID:
-  --artist-id <ID исполнителя>
-  --album-id <ID альбома>
-  --track-id <ID трека>
-  --playlist-id <владелец плейлиста>/<тип плейлиста>
-  -u URL, --url URL     URL исполнителя/альбома/трека/плейлиста
+--artist-id <ID исполнителя>
+--album-id <ID альбома>
+--track-id <ID трека>
+--playlist-id <владелец плейлиста>/<тип плейлиста>
+-u URL, --url URL     URL исполнителя/альбома/трека/плейлиста
 
 Указание пути:
-  --dir <Папка>         Папка для загрузки музыки (по умолчанию: .)
-  --path-pattern <Паттерн>
-                        Поддерживает следующие заполнители: #number, #artist, #title, #album, #year (по умолчанию: #artist/#album/#number - #title)
+--dir <Папка>         Папка для загрузки музыки (по умолчанию: .)
+--path-pattern <Паттерн>
+         Поддерживает следующие заполнители: #number, #artist, #title, #album, #year (по умолчанию: #artist/#album/#number - #title)
 
 Авторизация:
-  --session-id <ID сессии>
-  --spravka <Справка>
-  --user-agent <User-Agent>
+--session-id <ID сессии>
+--user-agent <User-Agent>
 ```
 
 ## Спасибо

@@ -20,7 +20,7 @@ from requests import Session
 MD5_SALT = 'XGRlBW9FXlekgbPrRHuSiA'
 ENCODED_BY = 'https://gitlab.com/llistochek/yandex-music-downloader'
 DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36'
-DEFAULT_DELAY = 0
+DEFAULT_DELAY = 3
 DEFAULT_PATH_PATTERN = '#artist/#album/#number - #title'
 DEFAULT_COVER_RESOLUTION = 400
 DEFAULT_LOG_LEVEL = 'INFO'
@@ -209,11 +209,11 @@ if __name__ == '__main__':
     common_group.add_argument('--skip-existing', action='store_true',
                               help=help_str('Пропускать уже загруженные треки'))
     common_group.add_argument('--cover-resolution', default=DEFAULT_COVER_RESOLUTION,
-                              metavar='<Разрешение обложки>', help=help_str(''))
+                              metavar='<Разрешение обложки>', type=int, help=help_str(''))
     common_group.add_argument('--add-lyrics', action='store_true',
                               help=help_str('Загружать тексты песен'))
     common_group.add_argument('--delay', default=DEFAULT_DELAY, metavar='<Задержка>',
-                              help=help_str('Задержка между запросами, в секундах'))
+                              type=int, help=help_str('Задержка между запросами, в секундах'))
     common_group.add_argument('--log-level', default=DEFAULT_LOG_LEVEL,
                               choices=logging._nameToLevel.keys())
 
@@ -239,7 +239,6 @@ if __name__ == '__main__':
 
     auth_group = parser.add_argument_group('Авторизация')
     auth_group.add_argument('--session-id', required=True, metavar='<ID сессии>')
-    auth_group.add_argument('--spravka', required=True, metavar='<Справка>')
     auth_group.add_argument('--user-agent', default=DEFAULT_USER_AGENT, metavar='<User-Agent>')
 
     args = parser.parse_args()
@@ -252,7 +251,6 @@ if __name__ == '__main__':
     session = Session()
     session.hooks = {'response': response_hook}
     session.cookies.set('Session_id', args.session_id, domain='yandex.ru')
-    session.cookies.set('spravka', args.spravka, domain='yandex.ru')
     session.headers['User-Agent'] = args.user_agent
     session.headers['X-Retpath-Y'] = urllib.parse.quote_plus('https://music.yandex.ru')
 
