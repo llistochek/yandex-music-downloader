@@ -33,7 +33,7 @@
 
 ## Установка
 ```
-git clone https://gitlab.com/llistochek/yandex-music-download
+git clone https://gitlab.com/llistochek/yandex-music-downloader
 cd yandex-music-download
 pip install -r requirements.txt
 python3 main.py
