@@ -245,8 +245,10 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(levelname)s -> %(message)s', level=args.log_level.upper())
 
     def response_hook(resp, *_args, **_kwargs):
+        if logging.root.isEnabledFor(logging.DEBUG):
+            if 'application/json' in resp.headers['Content-Type']:
+                logging.debug(resp.text)
         time.sleep(args.delay)
-        pass
 
     session = Session()
     session.hooks = {'response': response_hook}
