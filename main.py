@@ -59,6 +59,7 @@ class BasicTrackInfo:
     artists_names: list[str]
     url_template: str
     has_lyrics: bool
+    version: Optional[str]
 
     @staticmethod
     def from_json(json: dict):
@@ -71,7 +72,7 @@ class BasicTrackInfo:
         return BasicTrackInfo(title=json['title'], id=str(json['id']), real_id=json['realId'],
                               number=track_position['index'], disc_number=track_position['volume'],
                               artists_names=artists_names, album=album, url_template=url_template,
-                              has_lyrics=has_lyrics)
+                              has_lyrics=has_lyrics, version=json.get('version', None))
 
     def pic_url(self, resolution: int) -> str:
         return self.url_template.replace('%%', f'{resolution}x{resolution}')
@@ -216,6 +217,8 @@ if __name__ == '__main__':
                               type=int, help=help_str('Задержка между запросами, в секундах'))
     common_group.add_argument('--log-level', default=DEFAULT_LOG_LEVEL,
                               choices=logging._nameToLevel.keys())
+    common_group.add_argument('--add-version', action='store_true',
+                              help=help_str('Добавлять информацию о версии трека'))
 
     def args_playlist_id(arg: str) -> PlaylistId:
         arr = arg.split('/')
@@ -288,6 +291,8 @@ if __name__ == '__main__':
     print(f'Треков: {len(result_tracks)}')
 
     for track in result_tracks:
+        if args.add_version and track.version is not None:
+            track.title = f'{track.title} ({track.version})'
         save_path = prepare_track_path(args.dir, args.path_pattern, track)
         if args.skip_existing and os.path.isfile(save_path):
             continue
