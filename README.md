@@ -34,7 +34,7 @@
 ## Установка
 Для запуска скрипта требуется Python 3.8+
 ```
-git clone https://gitlab.com/llistochek/yandex-music-downloader
+git clone https://github.com/llistochek/yandex-music-downloader.git
 cd yandex-music-download
 pip install -r requirements.txt
 python3 main.py
