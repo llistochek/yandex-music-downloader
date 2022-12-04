@@ -32,6 +32,7 @@
 - Поддержка паттерна для пути сохранения музыки
 
 ## Установка
+Для запуска скрипта требуется Python 3.8+
 ```
 git clone https://gitlab.com/llistochek/yandex-music-downloader
 cd yandex-music-download
