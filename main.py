@@ -292,15 +292,15 @@ if __name__ == '__main__':
 
     if args.artist_id is not None:
         artist_info = get_artist_info(session, args.artist_id)
-        albums = [get_full_album_info(session, a.id) for a in artist_info.albums]
-        for album in albums:
-            if args.stick_to_artist and artist_info is not None:
-                if album.artists[0] != artist_info.name:
-                    albums.remove(album)
-                    continue
-            result_tracks.extend(album.tracks)
+        albums_count = 0
+        for album in artist_info.albums:
+            if args.stick_to_artist and album.artists[0] != artist_info.name:
+                continue
+            full_album = get_full_album_info(session, album.id)
+            result_tracks.extend(full_album.tracks)
+            albums_count += 1
         print(f'{artist_info.name}')
-        print(f'Альбомов: {len(albums)}')
+        print(f'Альбомов: {albums_count}')
     elif args.album_id is not None:
         album = get_full_album_info(session, args.album_id)
         result_tracks = album.tracks
