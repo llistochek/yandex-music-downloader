@@ -82,39 +82,53 @@ python3 main.py --session-id '<ID Сессии>' --url 'https://music.yandex.ru/
 ## Использование
 
 ```
-usage: main.py [-h] [--hq] [--skip-existing] [--cover-resolution <Разрешение обложки>] [--add-lyrics] [--delay <Задержка>] [--log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}]
-(--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL) [--dir <Папка>] [--path-pattern <Паттерн>]
---session-id <ID сессии> [--user-agent <User-Agent>]
+usage: main.py [-h] [--hq] [--skip-existing]
+               [--cover-resolution <Разрешение обложки>] [--add-lyrics]
+               [--delay <Задержка>] [--add-version] [--stick-to-artist]
+               [--log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}]
+               (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
+               [--dir <Папка>] [--path-pattern <Паттерн>] --session-id <ID
+               сессии> [--user-agent <User-Agent>]
 
 Загрузчик музыки с сервиса Яндекс.Музыка
 
 optional arguments:
--h, --help            show this help message and exit
+  -h, --help            show this help message and exit
 
 Общие параметры:
---hq                  Загружать треки в высоком качестве (по умолчанию: False)
---skip-existing       Пропускать уже загруженные треки (по умолчанию: False)
---cover-resolution <Разрешение обложки>
-         (по умолчанию: 400)
---add-lyrics          Загружать тексты песен (по умолчанию: False)
---delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 3)
---log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}
+  --hq                  Загружать треки в высоком качестве (по умолчанию:
+                        False)
+  --skip-existing       Пропускать уже загруженные треки (по умолчанию: False)
+  --cover-resolution <Разрешение обложки>
+                        (по умолчанию: 400)
+  --add-lyrics          Загружать тексты песен (по умолчанию: False)
+  --delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 3)
+  --add-version         Добавлять информацию о версии трека (по умолчанию:
+                        False)
+  --stick-to-artist     Загружать только альбомы созданные данным исполнителем
+                        (по умолчанию: False)
+  --log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}
 
 ID:
---artist-id <ID исполнителя>
---album-id <ID альбома>
---track-id <ID трека>
---playlist-id <владелец плейлиста>/<тип плейлиста>
--u URL, --url URL     URL исполнителя/альбома/трека/плейлиста
+  --artist-id <ID исполнителя>
+  --album-id <ID альбома>
+  --track-id <ID трека>
+  --playlist-id <владелец плейлиста>/<тип плейлиста>
+  -u URL, --url URL     URL исполнителя/альбома/трека/плейлиста
 
 Указание пути:
---dir <Папка>         Папка для загрузки музыки (по умолчанию: .)
---path-pattern <Паттерн>
-         Поддерживает следующие заполнители: #number, #artist, #title, #album, #year (по умолчанию: #artist/#album/#number - #title)
+  --dir <Папка>         Папка для загрузки музыки (по умолчанию: .)
+  --path-pattern <Паттерн>
+                        Поддерживает следующие заполнители: #number, #artist,
+                        #album-artist, #title, #album, #year (по умолчанию:
+                        #album-artist/#album/#number - #title)
 
 Авторизация:
---session-id <ID сессии>
---user-agent <User-Agent>
+  --session-id <ID сессии>
+  --user-agent <User-Agent>
+                        по умолчанию: Mozilla/5.0 (X11; Linux x86_64)
+                        AppleWebKit/537.36 (KHTML, like Gecko)
+                        Chrome/106.0.0.0 Safari/537.36
 ```
 
 ## Спасибо

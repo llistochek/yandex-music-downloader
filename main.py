@@ -21,7 +21,7 @@ MD5_SALT = 'XGRlBW9FXlekgbPrRHuSiA'
 ENCODED_BY = 'https://gitlab.com/llistochek/yandex-music-downloader'
 DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36'
 DEFAULT_DELAY = 3
-DEFAULT_PATH_PATTERN = '#artist/#album/#number - #title'
+DEFAULT_PATH_PATTERN = '#album-artist/#album/#number - #title'
 DEFAULT_COVER_RESOLUTION = 400
 DEFAULT_LOG_LEVEL = 'INFO'
 
@@ -42,10 +42,13 @@ class BasicAlbumInfo:
     id: str
     title: str
     year: int
+    artists: list[str]
 
     @staticmethod
     def from_json(json: dict):
-        return BasicAlbumInfo(id=json['id'], title=json['title'], year=json['year'])
+        artists = [a['name'] for a in json['artists']]
+        return BasicAlbumInfo(id=json['id'], title=json['title'], year=json['year'],
+                              artists=artists)
 
 
 @dataclass
@@ -56,7 +59,7 @@ class BasicTrackInfo:
     album: BasicAlbumInfo
     number: int
     disc_number: int
-    artists_names: list[str]
+    artists: list[str]
     url_template: str
     has_lyrics: bool
     version: Optional[str]
@@ -71,7 +74,7 @@ class BasicTrackInfo:
         has_lyrics = json['lyricsInfo']['hasAvailableTextLyrics']
         return BasicTrackInfo(title=json['title'], id=str(json['id']), real_id=json['realId'],
                               number=track_position['index'], disc_number=track_position['volume'],
-                              artists_names=artists_names, album=album, url_template=url_template,
+                              artists=artists_names, album=album, url_template=url_template,
                               has_lyrics=has_lyrics, version=json.get('version', None))
 
     def pic_url(self, resolution: int) -> str:
@@ -173,7 +176,8 @@ def get_playlist(session: Session, playlist: PlaylistId) -> list[BasicTrackInfo]
 
 def prepare_track_path(directory: str, path: str, track: BasicTrackInfo) -> str:
     path_part = path.replace('#number', str(track.number)) \
-               .replace('#artist', track.artists_names[0]) \
+               .replace('#artist', track.artists[0]) \
+               .replace('#album-artist', track.album.artists[0]) \
                .replace('#title', track.title) \
                .replace('#album', track.album.title) \
                .replace('#year', str(track.album.year)) \
@@ -184,10 +188,10 @@ def prepare_track_path(directory: str, path: str, track: BasicTrackInfo) -> str:
 def set_id3_tags(path: str, track: BasicTrackInfo, lyrics: Optional[str]) -> None:
     audiofile = eyed3.load(path)
     audiofile.tag = tag = eyed3.id3.tag.Tag(version=(2, 4, 0))
-    tag.artist = '; '.join(track.artists_names)
+    tag.artist = '; '.join(track.artists)
+    tag.album_artist = track.album.artists[0]
     tag.album = track.album.title
     tag.title = track.title
-    tag.album_artist = track.artists_names[0]
     tag.track_num = track.number
     tag.release_date = tag.original_release_date = tag.recording_date \
         = track.album.year
@@ -201,8 +205,11 @@ def set_id3_tags(path: str, track: BasicTrackInfo, lyrics: Optional[str]) -> Non
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Загрузчик музыки с сервиса Яндекс.Музыка')
 
-    def help_str(text: str) -> str:
-        return text + ' (по умолчанию: %(default)s)'
+    def help_str(text: Optional[str] = None) -> str:
+        default = 'по умолчанию: %(default)s'
+        if text is None:
+            return default
+        return f'{text} ({default})'
 
     common_group = parser.add_argument_group('Общие параметры')
     common_group.add_argument('--hq', action='store_true',
@@ -215,10 +222,13 @@ if __name__ == '__main__':
                               help=help_str('Загружать тексты песен'))
     common_group.add_argument('--delay', default=DEFAULT_DELAY, metavar='<Задержка>',
                               type=int, help=help_str('Задержка между запросами, в секундах'))
-    common_group.add_argument('--log-level', default=DEFAULT_LOG_LEVEL,
-                              choices=logging._nameToLevel.keys())
     common_group.add_argument('--add-version', action='store_true',
                               help=help_str('Добавлять информацию о версии трека'))
+    common_group.add_argument('--stick-to-artist', action='store_true',
+                              help=help_str('Загружать только альбомы созданные'
+                                            ' данным исполнителем'))
+    common_group.add_argument('--log-level', default=DEFAULT_LOG_LEVEL,
+                              choices=logging._nameToLevel.keys())
 
     def args_playlist_id(arg: str) -> PlaylistId:
         arr = arg.split('/')
@@ -238,11 +248,13 @@ if __name__ == '__main__':
     path_group.add_argument('--path-pattern', default=DEFAULT_PATH_PATTERN,
                             metavar='<Паттерн>',
                             help=help_str('Поддерживает следующие заполнители:'
-                                          ' #number, #artist, #title, #album, #year'))
+                                          ' #number, #artist, #album-artist, #title,'
+                                          ' #album, #year'))
 
     auth_group = parser.add_argument_group('Авторизация')
     auth_group.add_argument('--session-id', required=True, metavar='<ID сессии>')
-    auth_group.add_argument('--user-agent', default=DEFAULT_USER_AGENT, metavar='<User-Agent>')
+    auth_group.add_argument('--user-agent', default=DEFAULT_USER_AGENT, metavar='<User-Agent>',
+                            help=help_str())
 
     args = parser.parse_args()
     logging.basicConfig(format='%(levelname)s -> %(message)s', level=args.log_level.upper())
@@ -274,12 +286,20 @@ if __name__ == '__main__':
             print('Параметер url указан в неверном формате')
             sys.exit(1)
 
+    if args.artist_id is None and args.stick_to_artist:
+        logging.warning('Флаг --stick-to-artist имеет смысл только при'
+                        ' загрузке всех треков исполнителя')
+
     if args.artist_id is not None:
         artist_info = get_artist_info(session, args.artist_id)
         albums = [get_full_album_info(session, a.id) for a in artist_info.albums]
         for album in albums:
+            if args.stick_to_artist and artist_info is not None:
+                if album.artists[0] != artist_info.name:
+                    albums.remove(album)
+                    continue
             result_tracks.extend(album.tracks)
-        print(f'{artist_info.name}:')
+        print(f'{artist_info.name}')
         print(f'Альбомов: {len(albums)}')
     elif args.album_id is not None:
         album = get_full_album_info(session, args.album_id)
@@ -288,22 +308,26 @@ if __name__ == '__main__':
         result_tracks = [get_full_track_info(session, args.track_id)]
     elif args.playlist_id is not None:
         result_tracks = get_playlist(session, args.playlist_id)
+
     print(f'Треков: {len(result_tracks)}')
 
     for track in result_tracks:
         if args.add_version and track.version is not None:
             track.title = f'{track.title} ({track.version})'
+
         save_path = prepare_track_path(args.dir, args.path_pattern, track)
         if args.skip_existing and os.path.isfile(save_path):
             continue
+
         save_dir = os.path.dirname(save_path)
-        cover_path = save_dir + '/cover.jpg'
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
-        url = get_track_download_url(session, track, args.hq)
+        cover_path = save_dir + '/cover.jpg'
 
+        url = get_track_download_url(session, track, args.hq)
         logging.info('Загружается %s', save_path)
         download_file(session, url, save_path)
+
         lyrics = None
         if args.add_lyrics and track.has_lyrics:
             if isinstance(track, FullTrackInfo):
@@ -312,5 +336,6 @@ if __name__ == '__main__':
                 full_info = get_full_track_info(session, track.id)
                 lyrics = full_info.lyrics
         set_id3_tags(save_path, track, lyrics)
+
         if not os.path.isfile(cover_path):
             download_file(session, track.pic_url(args.cover_resolution), cover_path)
