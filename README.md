@@ -66,17 +66,17 @@ python3 main.py
 
 ### Скачать все треки [Twenty One Pilots](https://music.yandex.ru/artist/792433) в высоком качестве
 ```
-python3 main.py --session-id '<ID Сессии>' --hq --url 'https://music.yandex.ru/artist/792433'
+python3 main.py --session-id "<ID Сессии>" --hq --url "https://music.yandex.ru/artist/792433"
 ```
 
 ### Скачать альбом [Nevermind](https://music.yandex.ru/album/294912) в высоком качестве, загружая тексты песен
 ```
-python3 main.py --session-id '<ID Сессии>' --hq --add-lyrics --url 'https://music.yandex.ru/album/294912'
+python3 main.py --session-id "<ID Сессии>" --hq --add-lyrics --url "https://music.yandex.ru/album/294912"
 ```
 
 ### Скачать трек [Seven Nation Army](https://music.yandex.ru/album/11644078/track/6705392)
 ```
-python3 main.py --session-id '<ID Сессии>' --url 'https://music.yandex.ru/album/11644078/track/6705392'
+python3 main.py --session-id "<ID Сессии>" --url "https://music.yandex.ru/album/11644078/track/6705392"
 ```
 
 ## Использование
