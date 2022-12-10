@@ -7,7 +7,6 @@ import hashlib
 import io
 import time
 import sys
-import os
 import urllib.parse
 import re
 import eyed3
@@ -16,12 +15,13 @@ from typing import Optional
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from requests import Session
+from pathlib import Path
 
 MD5_SALT = 'XGRlBW9FXlekgbPrRHuSiA'
 ENCODED_BY = 'https://gitlab.com/llistochek/yandex-music-downloader'
 DEFAULT_USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36'
 DEFAULT_DELAY = 3
-DEFAULT_PATH_PATTERN = '#album-artist/#album/#number - #title'
+DEFAULT_PATH_PATTERN = Path('#album-artist', '#album', '#number - #title')
 DEFAULT_COVER_RESOLUTION = 400
 DEFAULT_LOG_LEVEL = 'INFO'
 
@@ -144,7 +144,7 @@ def get_track_download_url(session: Session, track: BasicTrackInfo, hq: bool) ->
            % (host, path_hash, ts, path, track.id)
 
 
-def download_file(session: Session, url: str, filename: str) -> None:
+def download_file(session: Session, url: str, filename: Path) -> None:
     resp = session.get(url)
     with open(filename, 'wb') as f:
         for chunk in resp.iter_content(chunk_size=1024):
@@ -174,18 +174,18 @@ def get_playlist(session: Session, playlist: PlaylistId) -> list[BasicTrackInfo]
     return [BasicTrackInfo.from_json(t) for t in raw_tracks]
 
 
-def prepare_track_path(directory: str, path: str, track: BasicTrackInfo) -> str:
-    path_part = path.replace('#number', str(track.number)) \
+def prepare_track_path(directory: Path, path: Path, track: BasicTrackInfo) -> Path:
+    path_part = str(path).replace('#number', str(track.number)) \
                .replace('#artist', track.artists[0]) \
                .replace('#album-artist', track.album.artists[0]) \
                .replace('#title', track.title) \
                .replace('#album', track.album.title) \
                .replace('#year', str(track.album.year)) \
                + '.mp3'
-    return os.path.join(directory, path_part)
+    return directory / path_part
 
 
-def set_id3_tags(path: str, track: BasicTrackInfo, lyrics: Optional[str]) -> None:
+def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str]) -> None:
     audiofile = eyed3.load(path)
     audiofile.tag = tag = eyed3.id3.tag.Tag(version=(2, 4, 0))
     tag.artist = '; '.join(track.artists)
@@ -244,9 +244,9 @@ if __name__ == '__main__':
 
     path_group = parser.add_argument_group('Указание пути')
     path_group.add_argument('--dir', default='.', metavar='<Папка>',
-                            help=help_str('Папка для загрузки музыки'))
+                            help=help_str('Папка для загрузки музыки'), type=Path)
     path_group.add_argument('--path-pattern', default=DEFAULT_PATH_PATTERN,
-                            metavar='<Паттерн>',
+                            metavar='<Паттерн>', type=Path,
                             help=help_str('Поддерживает следующие заполнители:'
                                           ' #number, #artist, #album-artist, #title,'
                                           ' #album, #year'))
@@ -316,13 +316,13 @@ if __name__ == '__main__':
             track.title = f'{track.title} ({track.version})'
 
         save_path = prepare_track_path(args.dir, args.path_pattern, track)
-        if args.skip_existing and os.path.isfile(save_path):
+        if args.skip_existing and save_path.is_file():
             continue
 
-        save_dir = os.path.dirname(save_path)
-        if not os.path.isdir(save_dir):
-            os.makedirs(save_dir)
-        cover_path = save_dir + '/cover.jpg'
+        save_dir = save_path.parent
+        if not save_dir.is_dir():
+            save_dir.mkdir(parents=True)
+        cover_path = save_dir / 'cover.jpg'
 
         url = get_track_download_url(session, track, args.hq)
         logging.info('Загружается %s', save_path)
@@ -337,5 +337,5 @@ if __name__ == '__main__':
                 lyrics = full_info.lyrics
         set_id3_tags(save_path, track, lyrics)
 
-        if not os.path.isfile(cover_path):
+        if not cover_path.is_file():
             download_file(session, track.pic_url(args.cover_resolution), cover_path)
