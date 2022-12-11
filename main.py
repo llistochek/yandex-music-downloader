@@ -41,14 +41,15 @@ class PlaylistId:
 class BasicAlbumInfo:
     id: str
     title: str
+    version: Optional[str]
     year: int
     artists: list[str]
 
     @staticmethod
     def from_json(json: dict):
         artists = [a['name'] for a in json['artists']]
-        return BasicAlbumInfo(id=json['id'], title=json['title'], year=json['year'],
-                              artists=artists)
+        return BasicAlbumInfo(id=json['id'], title=json['title'], version=json.get('version', None),
+                              year=json['year'], artists=artists)
 
 
 @dataclass
@@ -312,8 +313,12 @@ if __name__ == '__main__':
     print(f'Треков: {len(result_tracks)}')
 
     for track in result_tracks:
-        if args.add_version and track.version is not None:
-            track.title = f'{track.title} ({track.version})'
+        if args.add_version:
+            if track.version is not None:
+                track.title = f'{track.title} ({track.version})'
+            album = track.album
+            if album.version is not None:
+                album.title = f'{album.title} ({track.album.version})'
 
         save_path = prepare_track_path(args.dir, args.path_pattern, track)
         if args.skip_existing and save_path.is_file():
