@@ -87,8 +87,8 @@ usage: main.py [-h] [--hq] [--skip-existing]
                [--delay <Задержка>] [--add-version] [--stick-to-artist]
                [--log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}]
                (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
-               [--dir <Папка>] [--path-pattern <Паттерн>] --session-id <ID
-               сессии> [--user-agent <User-Agent>]
+               [--strict-path] [--dir <Папка>] [--path-pattern <Паттерн>]
+               --session-id <ID сессии> [--user-agent <User-Agent>]
 
 Загрузчик музыки с сервиса Яндекс.Музыка
 
@@ -117,6 +117,8 @@ ID:
   -u URL, --url URL     URL исполнителя/альбома/трека/плейлиста
 
 Указание пути:
+  --strict-path         Очищать путь от недопустимых символов (по умолчанию:
+                        False)
   --dir <Папка>         Папка для загрузки музыки (по умолчанию: .)
   --path-pattern <Паттерн>
                         Поддерживает следующие заполнители: #number, #artist,
