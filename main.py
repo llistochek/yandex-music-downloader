@@ -30,6 +30,8 @@ ALBUM_RE = re.compile(r'album/(\d+)$')
 ARTIST_RE = re.compile(r'artist/(\d+)$')
 PLAYLIST_RE = re.compile(r'([\w\-]+)/playlists/(\d+)$')
 
+CLEAR_PATH_RE = re.compile(r'[^\w\-_\./ ]+')
+
 
 @dataclass
 class PlaylistId:
@@ -203,6 +205,11 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str]) -> No
     tag.save()
 
 
+def clear_path(path: Path) -> Path:
+    cleared_path = CLEAR_PATH_RE.sub('_', str(path))
+    return Path(cleared_path)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Загрузчик музыки с сервиса Яндекс.Музыка')
 
@@ -244,6 +251,8 @@ if __name__ == '__main__':
     id_group.add_argument('-u', '--url', help='URL исполнителя/альбома/трека/плейлиста')
 
     path_group = parser.add_argument_group('Указание пути')
+    path_group.add_argument('--strict-path', action='store_true',
+                            help=help_str('Очищать путь от недопустимых символов'))
     path_group.add_argument('--dir', default='.', metavar='<Папка>',
                             help=help_str('Папка для загрузки музыки'), type=Path)
     path_group.add_argument('--path-pattern', default=DEFAULT_PATH_PATTERN,
@@ -321,6 +330,8 @@ if __name__ == '__main__':
                 album.title = f'{album.title} ({track.album.version})'
 
         save_path = prepare_track_path(args.dir, args.path_pattern, track)
+        if args.strict_path:
+            save_path = clear_path(save_path)
         if args.skip_existing and save_path.is_file():
             continue
 
