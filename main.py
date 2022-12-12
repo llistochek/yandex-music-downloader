@@ -10,12 +10,14 @@ import sys
 import urllib.parse
 import re
 import eyed3
+from eyed3.id3.frames import ImageFrame
 import datetime
-from typing import Optional
+from typing import Optional, BinaryIO
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from requests import Session
 from pathlib import Path
+import tempfile
 
 MD5_SALT = 'XGRlBW9FXlekgbPrRHuSiA'
 ENCODED_BY = 'https://gitlab.com/llistochek/yandex-music-downloader'
@@ -30,7 +32,7 @@ ALBUM_RE = re.compile(r'album/(\d+)$')
 ARTIST_RE = re.compile(r'artist/(\d+)$')
 PLAYLIST_RE = re.compile(r'([\w\-]+)/playlists/(\d+)$')
 
-CLEAR_PATH_RE = re.compile(r'[^\w\-_\.\\()/ ]+')
+CLEAR_PATH_RE = re.compile(r'[^\w\-\.\'\\()/_ ]+')
 
 
 @dataclass
@@ -147,11 +149,16 @@ def get_track_download_url(session: Session, track: BasicTrackInfo, hq: bool) ->
            % (host, path_hash, ts, path, track.id)
 
 
-def download_file(session: Session, url: str, filename: Path) -> None:
+def download_file(session: Session, url: str, path: Path) -> None:
     resp = session.get(url)
-    with open(filename, 'wb') as f:
+    with open(path, 'wb') as f:
         for chunk in resp.iter_content(chunk_size=1024):
             f.write(chunk)
+
+
+def download_bytes(session: Session, url: str) -> bytes:
+    resp = session.get(url)
+    return resp.content
 
 
 def get_full_track_info(session: Session, track_id: str) -> FullTrackInfo:
@@ -188,7 +195,8 @@ def prepare_track_path(directory: Path, path: Path, track: BasicTrackInfo) -> Pa
     return directory / path_part
 
 
-def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str]) -> None:
+def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
+                 album_cover: Optional[bytes]) -> None:
     audiofile = eyed3.load(path)
     audiofile.tag = tag = eyed3.id3.tag.Tag(version=(2, 4, 0))
     tag.artist = '; '.join(track.artists)
@@ -200,8 +208,11 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str]) -> No
         = track.album.year
     tag.disc_num = track.disc_number
     tag.encoded_by = ENCODED_BY
+
     if lyrics is not None:
         tag.lyrics.set(lyrics)
+    if album_cover is not None:
+        tag.images.set(ImageFrame.FRONT_COVER, album_cover, 'image/jpeg')
     tag.save()
 
 
@@ -230,6 +241,8 @@ if __name__ == '__main__':
                               help=help_str('Загружать тексты песен'))
     common_group.add_argument('--delay', default=DEFAULT_DELAY, metavar='<Задержка>',
                               type=int, help=help_str('Задержка между запросами, в секундах'))
+    common_group.add_argument('--embed-cover', action='store_true',
+                              help=help_str('Встраивать обложку в .mp3 файл'))
     common_group.add_argument('--add-version', action='store_true',
                               help=help_str('Добавлять информацию о версии трека'))
     common_group.add_argument('--stick-to-artist', action='store_true',
@@ -320,12 +333,13 @@ if __name__ == '__main__':
         result_tracks = get_playlist(session, args.playlist_id)
 
     print(f'Треков: {len(result_tracks)}')
+    covers: dict[str, bytes] = {}
 
     for track in result_tracks:
+        album = track.album
         if args.add_version:
             if track.version is not None:
                 track.title = f'{track.title} ({track.version})'
-            album = track.album
             if album.version is not None:
                 album.title = f'{album.title} ({track.album.version})'
 
@@ -338,7 +352,6 @@ if __name__ == '__main__':
         save_dir = save_path.parent
         if not save_dir.is_dir():
             save_dir.mkdir(parents=True)
-        cover_path = save_dir / 'cover.jpg'
 
         url = get_track_download_url(session, track, args.hq)
         logging.info('Загружается %s', save_path)
@@ -351,7 +364,17 @@ if __name__ == '__main__':
             else:
                 full_info = get_full_track_info(session, track.id)
                 lyrics = full_info.lyrics
-        set_id3_tags(save_path, track, lyrics)
 
-        if not cover_path.is_file():
-            download_file(session, track.pic_url(args.cover_resolution), cover_path)
+        cover = None
+        if args.embed_cover:
+            if cached_cover := covers.get(album.id, None):
+                cover = cached_cover
+            else:
+                cover = covers[album.id] = download_bytes(session,
+                                                          track.pic_url(args.cover_resolution))
+        else:
+            cover_path = save_dir / 'cover.jpg'
+            if not cover_path.is_file():
+                download_file(session, track.pic_url(args.cover_resolution), cover_path)
+
+        set_id3_tags(save_path, track, lyrics, cover)
