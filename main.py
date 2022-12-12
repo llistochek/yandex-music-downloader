@@ -30,7 +30,7 @@ ALBUM_RE = re.compile(r'album/(\d+)$')
 ARTIST_RE = re.compile(r'artist/(\d+)$')
 PLAYLIST_RE = re.compile(r'([\w\-]+)/playlists/(\d+)$')
 
-CLEAR_PATH_RE = re.compile(r'[^\w\-_\./ ]+')
+CLEAR_PATH_RE = re.compile(r'[^\w\-_\.\\()/ ]+')
 
 
 @dataclass
