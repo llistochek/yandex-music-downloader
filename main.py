@@ -228,22 +228,21 @@ if __name__ == '__main__':
 
     common_group = parser.add_argument_group('Общие параметры')
     common_group.add_argument('--hq', action='store_true',
-                              help=help_str('Загружать треки в высоком качестве'))
+                              help='Загружать треки в высоком качестве')
     common_group.add_argument('--skip-existing', action='store_true',
-                              help=help_str('Пропускать уже загруженные треки'))
-    common_group.add_argument('--cover-resolution', default=DEFAULT_COVER_RESOLUTION,
-                              metavar='<Разрешение обложки>', type=int, help=help_str(''))
+                              help='Пропускать уже загруженные треки')
     common_group.add_argument('--add-lyrics', action='store_true',
-                              help=help_str('Загружать тексты песен'))
+                              help='Загружать тексты песен')
+    common_group.add_argument('--embed-cover', action='store_true',
+                              help='Встраивать обложку в .mp3 файл')
+    common_group.add_argument('--add-version', action='store_true',
+                              help='Добавлять информацию о версии трека')
+    common_group.add_argument('--stick-to-artist', action='store_true',
+                              help='Загружать только альбомы созданные данным исполнителем')
+    common_group.add_argument('--cover-resolution', default=DEFAULT_COVER_RESOLUTION,
+                              metavar='<Разрешение обложки>', type=int, help=help_str(None))
     common_group.add_argument('--delay', default=DEFAULT_DELAY, metavar='<Задержка>',
                               type=int, help=help_str('Задержка между запросами, в секундах'))
-    common_group.add_argument('--embed-cover', action='store_true',
-                              help=help_str('Встраивать обложку в .mp3 файл'))
-    common_group.add_argument('--add-version', action='store_true',
-                              help=help_str('Добавлять информацию о версии трека'))
-    common_group.add_argument('--stick-to-artist', action='store_true',
-                              help=help_str('Загружать только альбомы созданные'
-                                            ' данным исполнителем'))
     common_group.add_argument('--log-level', default=DEFAULT_LOG_LEVEL,
                               choices=logging._nameToLevel.keys())
 
@@ -261,7 +260,7 @@ if __name__ == '__main__':
 
     path_group = parser.add_argument_group('Указание пути')
     path_group.add_argument('--strict-path', action='store_true',
-                            help=help_str('Очищать путь от недопустимых символов'))
+                            help=('Очищать путь от недопустимых символов'))
     path_group.add_argument('--dir', default='.', metavar='<Папка>',
                             help=help_str('Папка для загрузки музыки'), type=Path)
     path_group.add_argument('--path-pattern', default=DEFAULT_PATH_PATTERN,

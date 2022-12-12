@@ -82,10 +82,9 @@ python3 main.py --session-id "<ID Сессии>" --url "https://music.yandex.ru/
 ## Использование
 
 ```
-usage: main.py [-h] [--hq] [--skip-existing]
-               [--cover-resolution <Разрешение обложки>] [--add-lyrics]
-               [--delay <Задержка>] [--embed-cover] [--add-version]
-               [--stick-to-artist]
+usage: main.py [-h] [--hq] [--skip-existing] [--add-lyrics] [--embed-cover]
+               [--add-version] [--stick-to-artist]
+               [--cover-resolution <Разрешение обложки>] [--delay <Задержка>]
                [--log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}]
                (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
                [--strict-path] [--dir <Папка>] [--path-pattern <Паттерн>]
@@ -97,18 +96,15 @@ optional arguments:
   -h, --help            show this help message and exit
 
 Общие параметры:
-  --hq                  Загружать треки в высоком качестве (по умолчанию:
-                        False)
-  --skip-existing       Пропускать уже загруженные треки (по умолчанию: False)
-  --cover-resolution <Разрешение обложки>
-                        (по умолчанию: 400)
-  --add-lyrics          Загружать тексты песен (по умолчанию: False)
-  --delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 3)
-  --embed-cover         Встраивать обложку в .mp3 файл (по умолчанию: False)
-  --add-version         Добавлять информацию о версии трека (по умолчанию:
-                        False)
+  --hq                  Загружать треки в высоком качестве
+  --skip-existing       Пропускать уже загруженные треки
+  --add-lyrics          Загружать тексты песен
+  --embed-cover         Встраивать обложку в .mp3 файл
+  --add-version         Добавлять информацию о версии трека
   --stick-to-artist     Загружать только альбомы созданные данным исполнителем
-                        (по умолчанию: False)
+  --cover-resolution <Разрешение обложки>
+                        по умолчанию: 400
+  --delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 3)
   --log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}
 
 ID:
@@ -119,8 +115,7 @@ ID:
   -u URL, --url URL     URL исполнителя/альбома/трека/плейлиста
 
 Указание пути:
-  --strict-path         Очищать путь от недопустимых символов (по умолчанию:
-                        False)
+  --strict-path         Очищать путь от недопустимых символов
   --dir <Папка>         Папка для загрузки музыки (по умолчанию: .)
   --path-pattern <Паттерн>
                         Поддерживает следующие заполнители: #number, #artist,
