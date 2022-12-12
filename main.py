@@ -280,7 +280,8 @@ if __name__ == '__main__':
                             help=help_str())
 
     args = parser.parse_args()
-    logging.basicConfig(format='%(levelname)s -> %(message)s', level=args.log_level.upper())
+    logging.basicConfig(format='%(asctime)s |%(levelname)s| %(message)s',
+                        datefmt='%H:%M:%S', level=args.log_level.upper())
 
     def response_hook(resp, *_args, **_kwargs):
         if logging.root.isEnabledFor(logging.DEBUG):
