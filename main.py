@@ -1,23 +1,18 @@
 #!/bin/python3
 import logging
 import argparse
-import requests
-import json
 import hashlib
-import io
 import time
 import sys
 import urllib.parse
 import re
 import eyed3
 from eyed3.id3.frames import ImageFrame
-import datetime
-from typing import Optional, BinaryIO
+from typing import Optional
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from requests import Session
 from pathlib import Path
-import tempfile
 
 MD5_SALT = 'XGRlBW9FXlekgbPrRHuSiA'
 ENCODED_BY = 'https://gitlab.com/llistochek/yandex-music-downloader'
@@ -198,7 +193,7 @@ def prepare_track_path(directory: Path, path: Path, track: BasicTrackInfo) -> Pa
 def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
                  album_cover: Optional[bytes]) -> None:
     audiofile = eyed3.load(path)
-    audiofile.tag = tag = eyed3.id3.tag.Tag(version=(2, 4, 0))
+    audiofile.tag = tag = eyed3.id3.tag.Tag()
     tag.artist = '; '.join(track.artists)
     tag.album_artist = track.album.artists[0]
     tag.album = track.album.title
@@ -213,6 +208,7 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
         tag.lyrics.set(lyrics)
     if album_cover is not None:
         tag.images.set(ImageFrame.FRONT_COVER, album_cover, 'image/jpeg')
+
     tag.save()
 
 
