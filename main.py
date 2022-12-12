@@ -343,7 +343,7 @@ if __name__ == '__main__':
             if album.version is not None:
                 album.title = f'{album.title} ({track.album.version})'
 
-        save_path = prepare_track_path(args.path_pattern, args.strict_path, track)
+        save_path = args.dir / prepare_track_path(args.path_pattern, args.strict_path, track)
         if args.skip_existing and save_path.is_file():
             continue
 
