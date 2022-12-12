@@ -27,7 +27,7 @@ ALBUM_RE = re.compile(r'album/(\d+)$')
 ARTIST_RE = re.compile(r'artist/(\d+)$')
 PLAYLIST_RE = re.compile(r'([\w\-]+)/playlists/(\d+)$')
 
-CLEAR_PATH_RE = re.compile(r'[^\w\-\.\'\\()/_ ]+')
+FILENAME_CLEAR_RE = re.compile(r'[^\w\-\.\'() ]+')
 
 
 @dataclass
@@ -179,15 +179,24 @@ def get_playlist(session: Session, playlist: PlaylistId) -> list[BasicTrackInfo]
     return [BasicTrackInfo.from_json(t) for t in raw_tracks]
 
 
-def prepare_track_path(directory: Path, path: Path, track: BasicTrackInfo) -> Path:
-    path_part = str(path).replace('#number', str(track.number)) \
-               .replace('#artist', track.artists[0]) \
-               .replace('#album-artist', track.album.artists[0]) \
-               .replace('#title', track.title) \
-               .replace('#album', track.album.title) \
-               .replace('#year', str(track.album.year)) \
-               + '.mp3'
-    return directory / path_part
+def prepare_track_path(path: Path, prepare_path: bool, track: BasicTrackInfo) -> Path:
+    path_str = str(path)
+    repl_dict = {
+        '#number': track.number,
+        '#artist': track.artists[0],
+        '#album-artist': track.album.artists[0],
+        '#title': track.title,
+        '#album': track.album.title,
+        '#year': track.album.year
+    }
+    for placeholder, replacement in repl_dict.items():
+        replacement = str(replacement)
+        if prepare_path:
+            replacement = FILENAME_CLEAR_RE.sub('_', replacement)
+        path_str = path_str.replace(placeholder, replacement)
+    path_str += '.mp3'
+
+    return Path(path_str)
 
 
 def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
@@ -210,11 +219,6 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
         tag.images.set(ImageFrame.FRONT_COVER, album_cover, 'image/jpeg')
 
     tag.save()
-
-
-def clear_path(path: Path) -> Path:
-    cleared_path = CLEAR_PATH_RE.sub('_', str(path))
-    return Path(cleared_path)
 
 
 if __name__ == '__main__':
@@ -260,7 +264,7 @@ if __name__ == '__main__':
 
     path_group = parser.add_argument_group('Указание пути')
     path_group.add_argument('--strict-path', action='store_true',
-                            help=('Очищать путь от недопустимых символов'))
+                            help='Очищать путь от недопустимых символов')
     path_group.add_argument('--dir', default='.', metavar='<Папка>',
                             help=help_str('Папка для загрузки музыки'), type=Path)
     path_group.add_argument('--path-pattern', default=DEFAULT_PATH_PATTERN,
@@ -339,9 +343,7 @@ if __name__ == '__main__':
             if album.version is not None:
                 album.title = f'{album.title} ({track.album.version})'
 
-        save_path = prepare_track_path(args.dir, args.path_pattern, track)
-        if args.strict_path:
-            save_path = clear_path(save_path)
+        save_path = prepare_track_path(args.path_pattern, args.strict_path, track)
         if args.skip_existing and save_path.is_file():
             continue
 
