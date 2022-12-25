@@ -29,6 +29,8 @@ PLAYLIST_RE = re.compile(r'([\w\-]+)/playlists/(\d+)$')
 
 FILENAME_CLEAR_RE = re.compile(r'[^\w\-\.\'() ]+')
 
+TITLE_FMT = '%(title)s (%(version)s)'
+
 
 @dataclass
 class PlaylistId:
@@ -40,14 +42,17 @@ class PlaylistId:
 class BasicAlbumInfo:
     id: str
     title: str
-    version: Optional[str]
     year: int
     artists: list[str]
 
     @staticmethod
     def from_json(json: dict):
         artists = [a['name'] for a in json['artists']]
-        return BasicAlbumInfo(id=json['id'], title=json['title'], version=json.get('version', None),
+        title = json['title']
+        version = json.get('version', None)
+        if version is not None:
+            title = TITLE_FMT % {'title': title, 'version': version}
+        return BasicAlbumInfo(id=json['id'], title=title,
                               year=json['year'], artists=artists)
 
 
@@ -62,7 +67,6 @@ class BasicTrackInfo:
     artists: list[str]
     url_template: str
     has_lyrics: bool
-    version: Optional[str]
 
     @staticmethod
     def from_json(json: dict):
@@ -72,10 +76,16 @@ class BasicTrackInfo:
         album = BasicAlbumInfo.from_json(album_json)
         url_template = 'https://' + json['ogImage']
         has_lyrics = json['lyricsInfo']['hasAvailableTextLyrics']
-        return BasicTrackInfo(title=json['title'], id=str(json['id']), real_id=json['realId'],
+
+        title = json['title']
+        version = json.get('version', None)
+        if version is not None:
+            title = TITLE_FMT % {'title': title, 'version': version}
+
+        return BasicTrackInfo(title=title, id=str(json['id']), real_id=json['realId'],
                               number=track_position['index'], disc_number=track_position['volume'],
                               artists=artists_names, album=album, url_template=url_template,
-                              has_lyrics=has_lyrics, version=json.get('version', None))
+                              has_lyrics=has_lyrics)
 
     def pic_url(self, resolution: int) -> str:
         return self.url_template.replace('%%', f'{resolution}x{resolution}')
@@ -239,8 +249,6 @@ if __name__ == '__main__':
                               help='Загружать тексты песен')
     common_group.add_argument('--embed-cover', action='store_true',
                               help='Встраивать обложку в .mp3 файл')
-    common_group.add_argument('--add-version', action='store_true',
-                              help='Добавлять информацию о версии трека')
     common_group.add_argument('--stick-to-artist', action='store_true',
                               help='Загружать только альбомы созданные данным исполнителем')
     common_group.add_argument('--cover-resolution', default=DEFAULT_COVER_RESOLUTION,
@@ -337,12 +345,6 @@ if __name__ == '__main__':
 
     for track in result_tracks:
         album = track.album
-        if args.add_version:
-            if track.version is not None:
-                track.title = f'{track.title} ({track.version})'
-            if album.version is not None:
-                album.title = f'{album.title} ({track.album.version})'
-
         save_path = args.dir / prepare_track_path(args.path_pattern, args.strict_path, track)
         if args.skip_existing and save_path.is_file():
             continue
