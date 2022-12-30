@@ -83,8 +83,8 @@ python3 main.py --session-id "<ID Сессии>" --url "https://music.yandex.ru/
 
 ```
 usage: main.py [-h] [--hq] [--skip-existing] [--add-lyrics] [--embed-cover]
-               [--add-version] [--stick-to-artist]
-               [--cover-resolution <Разрешение обложки>] [--delay <Задержка>]
+               [--stick-to-artist] [--cover-resolution <Разрешение обложки>]
+               [--delay <Задержка>]
                [--log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}]
                (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
                [--strict-path] [--dir <Папка>] [--path-pattern <Паттерн>]
@@ -100,7 +100,6 @@ optional arguments:
   --skip-existing       Пропускать уже загруженные треки
   --add-lyrics          Загружать тексты песен
   --embed-cover         Встраивать обложку в .mp3 файл
-  --add-version         Добавлять информацию о версии трека
   --stick-to-artist     Загружать только альбомы созданные данным исполнителем
   --cover-resolution <Разрешение обложки>
                         по умолчанию: 400
