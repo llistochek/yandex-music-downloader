@@ -70,6 +70,8 @@ class BasicTrackInfo:
 
     @staticmethod
     def from_json(json: dict):
+        if not json['available']:
+            return None
         album_json = json['albums'][0]
         artists_names = [a['name'] for a in json['artists']]
         track_position = album_json['trackPosition']
@@ -81,7 +83,6 @@ class BasicTrackInfo:
         version = json.get('version', None)
         if version is not None:
             title = TITLE_FMT % {'title': title, 'version': version}
-
         return BasicTrackInfo(title=title, id=str(json['id']), real_id=json['realId'],
                               number=track_position['index'], disc_number=track_position['volume'],
                               artists=artists_names, album=album, url_template=url_template,
@@ -110,9 +111,9 @@ class FullAlbumInfo(BasicAlbumInfo):
     def from_json(json: dict):
         base = BasicAlbumInfo.from_json(json)
         tracks = json.get('volumes', [])
-        tracks = [t for v in tracks for t in v]  # Array flattening
+        tracks = [t for v in tracks for t in v]
         tracks = map(BasicTrackInfo.from_json, tracks)
-        tracks = list(tracks)
+        tracks = [t for t in tracks if t is not None]
         return FullAlbumInfo(**base.__dict__, tracks=tracks)
 
 
@@ -186,7 +187,9 @@ def get_playlist(session: Session, playlist: PlaylistId) -> list[BasicTrackInfo]
     resp = session.get('https://music.yandex.ru/handlers/playlist.jsx'
                        f'?owner={playlist.owner}&kinds={playlist.kind}&lang=ru')
     raw_tracks = resp.json()['playlist']['tracks']
-    return [BasicTrackInfo.from_json(t) for t in raw_tracks]
+    tracks = [BasicTrackInfo.from_json(t) for t in raw_tracks]
+    tracks = [t for t in tracks if t is not None]
+    return tracks
 
 
 def prepare_track_path(path: Path, prepare_path: bool, track: BasicTrackInfo) -> Path:
