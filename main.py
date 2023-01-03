@@ -50,6 +50,7 @@ class BasicAlbumInfo:
     @staticmethod
     def from_json(json: dict):
         if json['metaType'] != 'music':
+            logging.info('"%s" пропущен т.к. не является музыкальным альбомом', json['title'])
             return None
         artists = [a['name'] for a in json['artists']]
         title = json['title']
@@ -351,6 +352,7 @@ if __name__ == '__main__':
         albums_count = 0
         for album in artist_info.albums:
             if args.stick_to_artist and album.artists[0] != artist_info.name:
+                logging.info('Альбом "%s" пропущен из-за флага --stick-to-artist', album.title)
                 continue
             full_album = get_full_album_info(session, album.id)
             result_tracks.extend(full_album.tracks)
