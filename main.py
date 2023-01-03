@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from requests import Session
 from pathlib import Path
+import datetime as dt
 
 MD5_SALT = 'XGRlBW9FXlekgbPrRHuSiA'
 ENCODED_BY = 'https://github.com/llistochek/yandex-music-downloader'
@@ -42,18 +43,22 @@ class PlaylistId:
 class BasicAlbumInfo:
     id: str
     title: str
+    release_date: dt.datetime
     year: int
     artists: list[str]
 
     @staticmethod
     def from_json(json: dict):
+        if json['metaType'] != 'music':
+            return None
         artists = [a['name'] for a in json['artists']]
         title = json['title']
         version = json.get('version', None)
+        release_date = dt.datetime.fromisoformat(json['releaseDate'])
         if version is not None:
             title = TITLE_FMT % {'title': title, 'version': version}
-        return BasicAlbumInfo(id=json['id'], title=title,
-                              year=json['year'], artists=artists)
+        return BasicAlbumInfo(id=json['id'], title=title, year=json['year'],
+                              artists=artists, release_date=release_date)
 
 
 @dataclass
@@ -76,6 +81,8 @@ class BasicTrackInfo:
         artists_names = [a['name'] for a in json['artists']]
         track_position = album_json['trackPosition']
         album = BasicAlbumInfo.from_json(album_json)
+        if album is None:
+            raise RuntimeError
         url_template = 'https://' + json['ogImage']
         has_lyrics = json['lyricsInfo']['hasAvailableTextLyrics']
 
@@ -128,7 +135,7 @@ class ArtistInfo:
     def from_json(json: dict):
         artist = json['artist']
         albums = map(BasicAlbumInfo.from_json, json.get('albums', []))
-        albums = list(albums)
+        albums = [a for a in albums if a is not None]
         url_template = 'https://' + artist['ogImage']
         return ArtistInfo(id=str(artist['id']), name=artist['name'],
                           albums=albums, url_template=url_template)
@@ -187,7 +194,7 @@ def get_playlist(session: Session, playlist: PlaylistId) -> list[BasicTrackInfo]
     resp = session.get('https://music.yandex.ru/handlers/playlist.jsx'
                        f'?owner={playlist.owner}&kinds={playlist.kind}&lang=ru')
     raw_tracks = resp.json()['playlist']['tracks']
-    tracks = [BasicTrackInfo.from_json(t) for t in raw_tracks]
+    tracks = map(BasicTrackInfo.from_json, raw_tracks)
     tracks = [t for t in tracks if t is not None]
     return tracks
 
@@ -208,7 +215,6 @@ def prepare_track_path(path: Path, prepare_path: bool, track: BasicTrackInfo) ->
             replacement = FILENAME_CLEAR_RE.sub('_', replacement)
         path_str = path_str.replace(placeholder, replacement)
     path_str += '.mp3'
-
     return Path(path_str)
 
 
@@ -221,9 +227,9 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
     tag.album = track.album.title
     tag.title = track.title
     tag.track_num = track.number
-    tag.release_date = tag.original_release_date = tag.recording_date \
-        = track.album.year
     tag.disc_num = track.disc_number
+    tag.release_date = tag.original_release_date \
+        = eyed3.core.Date(*track.album.release_date.timetuple()[:6])
     tag.encoded_by = ENCODED_BY
 
     if lyrics is not None:
