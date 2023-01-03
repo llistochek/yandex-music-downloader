@@ -175,24 +175,40 @@ def download_bytes(session: Session, url: str) -> bytes:
 
 
 def get_full_track_info(session: Session, track_id: str) -> FullTrackInfo:
-    resp = session.get(f'https://music.yandex.ru/handlers/track.jsx?track={track_id}&lang=ru')
+    params = {
+        'track': track_id,
+        'lang': 'ru'
+    }
+    resp = session.get(f'https://music.yandex.ru/handlers/track.jsx', params=params)
     return FullTrackInfo.from_json(resp.json())
 
 
 def get_full_album_info(session: Session, album_id: str) -> FullAlbumInfo:
-    resp = session.get(f'https://music.yandex.ru/handlers/album.jsx?album={album_id}&lang=ru')
+    params = {
+        'album': album_id,
+        'lang': 'ru'
+    }
+    resp = session.get(f'https://music.yandex.ru/handlers/album.jsx', params=params)
     return FullAlbumInfo.from_json(resp.json())
 
 
 def get_artist_info(session: Session, artist_id: str) -> ArtistInfo:
-    resp = session.get('https://music.yandex.ru/handlers/artist.jsx'
-                       f'?artist={artist_id}&what=albums&lang=ru')
+    params = {
+        'artist': artist_id,
+        'what': 'albums',
+        'lang': 'ru'
+    }
+    resp = session.get('https://music.yandex.ru/handlers/artist.jsx', params=params)
     return ArtistInfo.from_json(resp.json())
 
 
 def get_playlist(session: Session, playlist: PlaylistId) -> list[BasicTrackInfo]:
-    resp = session.get('https://music.yandex.ru/handlers/playlist.jsx'
-                       f'?owner={playlist.owner}&kinds={playlist.kind}&lang=ru')
+    params = {
+        'owner': playlist.owner,
+        'kinds': playlist.kind,
+        'lang': 'ru'
+    }
+    resp = session.get('https://music.yandex.ru/handlers/playlist.jsx', params=params)
     raw_tracks = resp.json()['playlist']['tracks']
     tracks = map(BasicTrackInfo.from_json, raw_tracks)
     tracks = [t for t in tracks if t is not None]
