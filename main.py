@@ -43,7 +43,7 @@ class PlaylistId:
 class BasicAlbumInfo:
     id: str
     title: str
-    release_date: dt.datetime
+    release_date: Optional[dt.datetime]
     year: int
     artists: list[str]
 
@@ -55,7 +55,9 @@ class BasicAlbumInfo:
         artists = [a['name'] for a in json['artists']]
         title = json['title']
         version = json.get('version', None)
-        release_date = dt.datetime.fromisoformat(json['releaseDate'])
+        release_date = json.get('releaseDate', None)
+        if release_date is not None:
+            release_date = dt.datetime.fromisoformat(release_date)
         if version is not None:
             title = TITLE_FMT % {'title': title, 'version': version}
         return BasicAlbumInfo(id=json['id'], title=title, year=json['year'],
@@ -237,6 +239,10 @@ def prepare_track_path(path: Path, prepare_path: bool, track: BasicTrackInfo) ->
 
 def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
                  album_cover: Optional[bytes]) -> None:
+    if track.album.release_date is not None:
+        release_date = eyed3.core.Date(*track.album.release_date.timetuple()[:6])
+    else:
+        release_date = track.album.year
     audiofile = eyed3.load(path)
     audiofile.tag = tag = eyed3.id3.tag.Tag()
     tag.artist = '; '.join(track.artists)
@@ -245,8 +251,7 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
     tag.title = track.title
     tag.track_num = track.number
     tag.disc_num = track.disc_number
-    tag.release_date = tag.original_release_date \
-        = eyed3.core.Date(*track.album.release_date.timetuple()[:6])
+    tag.release_date = tag.original_release_date = release_date
     tag.encoded_by = ENCODED_BY
 
     if lyrics is not None:
