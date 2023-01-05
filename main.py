@@ -39,6 +39,24 @@ class PlaylistId:
     kind: int
 
 
+def parse_artists(artists: list) -> list[str]:
+    artists_names = []
+    for artist in artists:
+        artists_names.append(artist['name'])
+        if decomposed := artist.get('decomposed'):
+            for d_artist in decomposed:
+                if isinstance(d_artist, dict):
+                    artists_names.append(d_artist['name'])
+    return artists_names
+
+
+def parse_title(json: dict) -> str:
+    title = json['title']
+    if version := json.get('version'):
+        title = TITLE_FMT % {'title': title, 'version': version}
+    return title
+
+
 @dataclass
 class BasicAlbumInfo:
     id: str
@@ -52,14 +70,11 @@ class BasicAlbumInfo:
         if json['metaType'] != 'music':
             logging.info('"%s" пропущен т.к. не является музыкальным альбомом', json['title'])
             return None
-        artists = [a['name'] for a in json['artists']]
-        title = json['title']
-        version = json.get('version', None)
-        release_date = json.get('releaseDate', None)
+        artists = parse_artists(json['artists'])
+        title = parse_title(json)
+        release_date = json.get('releaseDate')
         if release_date is not None:
             release_date = dt.datetime.fromisoformat(release_date)
-        if version is not None:
-            title = TITLE_FMT % {'title': title, 'version': version}
         return BasicAlbumInfo(id=json['id'], title=title, year=json['year'],
                               artists=artists, release_date=release_date)
 
@@ -81,21 +96,17 @@ class BasicTrackInfo:
         if not json['available']:
             return None
         album_json = json['albums'][0]
-        artists_names = [a['name'] for a in json['artists']]
+        artists = parse_artists(json['artists'])
         track_position = album_json['trackPosition']
         album = BasicAlbumInfo.from_json(album_json)
         if album is None:
-            raise RuntimeError
+            raise ValueError
         url_template = 'https://' + json['ogImage']
         has_lyrics = json['lyricsInfo']['hasAvailableTextLyrics']
-
-        title = json['title']
-        version = json.get('version', None)
-        if version is not None:
-            title = TITLE_FMT % {'title': title, 'version': version}
+        title = parse_title(json)
         return BasicTrackInfo(title=title, id=str(json['id']), real_id=json['realId'],
                               number=track_position['index'], disc_number=track_position['volume'],
-                              artists=artists_names, album=album, url_template=url_template,
+                              artists=artists, album=album, url_template=url_template,
                               has_lyrics=has_lyrics)
 
     def pic_url(self, resolution: int) -> str:
@@ -245,7 +256,7 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
         release_date = track.album.year
     audiofile = eyed3.load(path)
     audiofile.tag = tag = eyed3.id3.tag.Tag()
-    tag.artist = '; '.join(track.artists)
+    tag.artist = chr(0).join(track.artists)
     tag.album_artist = track.album.artists[0]
     tag.album = track.album.title
     tag.title = track.title
@@ -362,17 +373,18 @@ if __name__ == '__main__':
             full_album = get_full_album_info(session, album.id)
             result_tracks.extend(full_album.tracks)
             albums_count += 1
-        print(f'{artist_info.name}')
-        print(f'Альбомов: {albums_count}')
+        logging.info(artist_info.name)
+        logging.info('Альбомов: %d', albums_count)
     elif args.album_id is not None:
         album = get_full_album_info(session, args.album_id)
+        logging.info(album.title)
         result_tracks = album.tracks
     elif args.track_id is not None:
         result_tracks = [get_full_track_info(session, args.track_id)]
     elif args.playlist_id is not None:
         result_tracks = get_playlist(session, args.playlist_id)
 
-    print(f'Треков: {len(result_tracks)}')
+    logging.info('Треков: %d', len(result_tracks))
     covers: dict[str, bytes] = {}
 
     for track in result_tracks:
@@ -399,7 +411,7 @@ if __name__ == '__main__':
 
         cover = None
         if args.embed_cover:
-            if cached_cover := covers.get(album.id, None):
+            if cached_cover := covers.get(album.id):
                 cover = cached_cover
             else:
                 cover = covers[album.id] = download_bytes(session,
