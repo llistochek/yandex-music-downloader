@@ -28,7 +28,7 @@ ALBUM_RE = re.compile(r'album/(\d+)$')
 ARTIST_RE = re.compile(r'artist/(\d+)$')
 PLAYLIST_RE = re.compile(r'([\w\-]+)/playlists/(\d+)$')
 
-FILENAME_CLEAR_RE = re.compile(r'[^\w\-\.\'() ]+')
+FILENAME_CLEAR_RE = re.compile(r'[^\w\-\'() ]+')
 
 TITLE_FMT = '%(title)s (%(version)s)'
 
