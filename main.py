@@ -274,6 +274,7 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
 
 
 if __name__ == '__main__':
+    eyed3.log.setLevel("ERROR")
     parser = argparse.ArgumentParser(description='Загрузчик музыки с сервиса Яндекс.Музыка')
 
     def help_str(text: Optional[str] = None) -> str:
