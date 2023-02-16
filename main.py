@@ -223,7 +223,7 @@ def get_playlist(session: Session, playlist: PlaylistId) -> list[BasicTrackInfo]
         'lang': 'ru'
     }
     resp = session.get('https://music.yandex.ru/handlers/playlist.jsx', params=params)
-    raw_tracks = resp.json()['playlist']['tracks']
+    raw_tracks = resp.json()['playlist'].get('tracks', [])
     tracks = map(BasicTrackInfo.from_json, raw_tracks)
     tracks = [t for t in tracks if t is not None]
     return tracks
