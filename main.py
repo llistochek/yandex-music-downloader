@@ -95,15 +95,18 @@ class BasicTrackInfo:
     def from_json(json: dict):
         if not json['available']:
             return None
+        title = parse_title(json)
         album_json = json['albums'][0]
         artists = parse_artists(json['artists'])
-        track_position = album_json['trackPosition']
+        track_position = album_json.get('trackPosition')
+        if track_position is None:
+            logging.warning('%s - %s не содержит информацию о позиции трека', artists[0], title)
+            track_position = {'index': 1, 'volume': 1}
         album = BasicAlbumInfo.from_json(album_json)
         if album is None:
             raise ValueError
         url_template = 'https://' + json['ogImage']
         has_lyrics = json['lyricsInfo']['hasAvailableTextLyrics']
-        title = parse_title(json)
         return BasicTrackInfo(title=title, id=str(json['id']), real_id=json['realId'],
                               number=track_position['index'], disc_number=track_position['volume'],
                               artists=artists, album=album, url_template=url_template,
