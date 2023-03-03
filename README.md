@@ -49,7 +49,7 @@ python3 main.py
 3. Выберите вкладку Application
 4. Выберите пункт Cookies->https://music.yandex.ru
 5. Скопируйте значение куки (кликните на значение куки 2 раза -> Ctrl+C):
-    - Куки `Session_id` - это аргумент `--sesion-id`
+    - Куки `Session_id` - это аргумент `--session-id`
 
 
 ### Для Firefox
@@ -58,7 +58,7 @@ python3 main.py
 3. Выберите вкладку Storage
 4. Выберите пункт Куки->https://music.yandex.ru
 5. Скопируйте значение куки (кликните на значение куки 2 раза -> Ctrl+C):
-    - Куки `Session_id` - это аргумент `--sesion-id`
+    - Куки `Session_id` - это аргумент `--session-id`
 
 
 ## Примеры использования
