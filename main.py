@@ -62,7 +62,7 @@ class BasicAlbumInfo:
     id: str
     title: str
     release_date: Optional[dt.datetime]
-    year: int
+    year: Optional[int]
     artists: list[str]
 
     @staticmethod
@@ -75,7 +75,7 @@ class BasicAlbumInfo:
         release_date = json.get('releaseDate')
         if release_date is not None:
             release_date = dt.datetime.fromisoformat(release_date)
-        return BasicAlbumInfo(id=json['id'], title=title, year=json['year'],
+        return BasicAlbumInfo(id=json['id'], title=title, year=json.get('year'),
                               artists=artists, release_date=release_date)
 
 
