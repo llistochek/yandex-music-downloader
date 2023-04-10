@@ -33,6 +33,19 @@ FILENAME_CLEAR_RE = re.compile(r'[^\w\-\'() ]+')
 TITLE_FMT = '%(title)s (%(version)s)'
 
 
+class CoverInfo:
+    cover_url_template: Optional[str]
+
+    def __init__(self, json_data: dict):
+        og_image = json_data.get('ogImage')
+        if og_image is not None:
+            self.cover_url_template = 'https://' + og_image
+
+    def cover_url(self, resolution: int) -> Optional[str]:
+        if self.cover_url_template is not None:
+            return self.cover_url_template.replace('%%', f'{resolution}x{resolution}')
+
+
 @dataclass
 class PlaylistId:
     owner: str
@@ -50,9 +63,9 @@ def parse_artists(artists: list) -> list[str]:
     return artists_names
 
 
-def parse_title(json: dict) -> str:
-    title = json['title']
-    if version := json.get('version'):
+def parse_title(data: dict) -> str:
+    title = data['title']
+    if version := data.get('version'):
         title = TITLE_FMT % {'title': title, 'version': version}
     return title
 
@@ -66,16 +79,16 @@ class BasicAlbumInfo:
     artists: list[str]
 
     @staticmethod
-    def from_json(json: dict):
-        if json['metaType'] != 'music':
-            logging.info('"%s" пропущен т.к. не является музыкальным альбомом', json['title'])
+    def from_json(data: dict):
+        if data['metaType'] != 'music':
+            logging.info('"%s" пропущен т.к. не является музыкальным альбомом', data['title'])
             return None
-        artists = parse_artists(json['artists'])
-        title = parse_title(json)
-        release_date = json.get('releaseDate')
+        artists = parse_artists(data['artists'])
+        title = parse_title(data)
+        release_date = data.get('releaseDate')
         if release_date is not None:
             release_date = dt.datetime.fromisoformat(release_date)
-        return BasicAlbumInfo(id=json['id'], title=title, year=json.get('year'),
+        return BasicAlbumInfo(id=data['id'], title=title, year=data.get('year'),
                               artists=artists, release_date=release_date)
 
 
@@ -88,32 +101,28 @@ class BasicTrackInfo:
     number: int
     disc_number: int
     artists: list[str]
-    url_template: str
     has_lyrics: bool
+    cover_info: CoverInfo
 
     @staticmethod
-    def from_json(json: dict):
-        if not json['available']:
+    def from_json(data: dict):
+        if not data['available']:
             return None
-        title = parse_title(json)
-        album_json = json['albums'][0]
-        artists = parse_artists(json['artists'])
-        track_position = album_json.get('trackPosition')
+        title = parse_title(data)
+        album_data = data['albums'][0]
+        artists = parse_artists(data['artists'])
+        track_position = album_data.get('trackPosition')
         if track_position is None:
             logging.warning('%s - %s не содержит информацию о позиции трека', artists[0], title)
             track_position = {'index': 1, 'volume': 1}
-        album = BasicAlbumInfo.from_json(album_json)
+        album = BasicAlbumInfo.from_json(album_data)
         if album is None:
             raise ValueError
-        url_template = 'https://' + json['ogImage']
-        has_lyrics = json['lyricsInfo']['hasAvailableTextLyrics']
-        return BasicTrackInfo(title=title, id=str(json['id']), real_id=json['realId'],
+        cover_info = CoverInfo(data)
+        has_lyrics = data['lyricsInfo']['hasAvailableTextLyrics']
+        return BasicTrackInfo(title=title, id=str(data['id']), real_id=data['realId'],
                               number=track_position['index'], disc_number=track_position['volume'],
-                              artists=artists, album=album, url_template=url_template,
-                              has_lyrics=has_lyrics)
-
-    def pic_url(self, resolution: int) -> str:
-        return self.url_template.replace('%%', f'{resolution}x{resolution}')
+                              artists=artists, album=album, has_lyrics=has_lyrics, cover_info=cover_info)
 
 
 @dataclass
@@ -121,9 +130,9 @@ class FullTrackInfo(BasicTrackInfo):
     lyrics: str
 
     @staticmethod
-    def from_json(json: dict):
-        base = BasicTrackInfo.from_json(json['track'])
-        lyrics = json['lyric'][0]['fullLyrics']
+    def from_json(data: dict):
+        base = BasicTrackInfo.from_json(data['track'])
+        lyrics = data['lyric'][0]['fullLyrics']
         return FullTrackInfo(**base.__dict__, lyrics=lyrics)
 
 
@@ -132,9 +141,9 @@ class FullAlbumInfo(BasicAlbumInfo):
     tracks: list[BasicTrackInfo]
 
     @staticmethod
-    def from_json(json: dict):
-        base = BasicAlbumInfo.from_json(json)
-        tracks = json.get('volumes', [])
+    def from_json(data: dict):
+        base = BasicAlbumInfo.from_json(data)
+        tracks = data.get('volumes', [])
         tracks = [t for v in tracks for t in v]
         tracks = map(BasicTrackInfo.from_json, tracks)
         tracks = [t for t in tracks if t is not None]
@@ -146,19 +155,16 @@ class ArtistInfo:
     id: str
     name: str
     albums: list[BasicAlbumInfo]
-    url_template: str
+    cover_info: CoverInfo
 
     @staticmethod
-    def from_json(json: dict):
-        artist = json['artist']
-        albums = map(BasicAlbumInfo.from_json, json.get('albums', []))
+    def from_json(data: dict):
+        artist = data['artist']
+        albums = map(BasicAlbumInfo.from_json, data.get('albums', []))
         albums = [a for a in albums if a is not None]
-        url_template = 'https://' + artist['ogImage']
+        cover_info = CoverInfo(data)
         return ArtistInfo(id=str(artist['id']), name=artist['name'],
-                          albums=albums, url_template=url_template)
-
-    def pic_url(self, resolution: int) -> str:
-        return self.url_template.replace('%%', f'{resolution}x{resolution}')
+                          cover_info=cover_info, albums=albums)
 
 
 def get_track_download_url(session: Session, track: BasicTrackInfo, hq: bool) -> str:
@@ -196,7 +202,7 @@ def get_full_track_info(session: Session, track_id: str) -> FullTrackInfo:
         'track': track_id,
         'lang': 'ru'
     }
-    resp = session.get(f'https://music.yandex.ru/handlers/track.jsx', params=params)
+    resp = session.get('https://music.yandex.ru/handlers/track.jsx', params=params)
     return FullTrackInfo.from_json(resp.json())
 
 
@@ -205,7 +211,7 @@ def get_full_album_info(session: Session, album_id: str) -> FullAlbumInfo:
         'album': album_id,
         'lang': 'ru'
     }
-    resp = session.get(f'https://music.yandex.ru/handlers/album.jsx', params=params)
+    resp = session.get('https://music.yandex.ru/handlers/album.jsx', params=params)
     return FullAlbumInfo.from_json(resp.json())
 
 
@@ -414,15 +420,16 @@ if __name__ == '__main__':
                 lyrics = full_info.lyrics
 
         cover = None
-        if args.embed_cover:
-            if cached_cover := covers.get(album.id):
-                cover = cached_cover
+        cover_url = track.cover_info.cover_url(args.cover_resolution)
+        if cover_url is not None:
+            if args.embed_cover:
+                if cached_cover := covers.get(album.id):
+                    cover = cached_cover
+                else:
+                    cover = covers[album.id] = download_bytes(session, cover_url)
             else:
-                cover = covers[album.id] = download_bytes(session,
-                                                          track.pic_url(args.cover_resolution))
-        else:
-            cover_path = save_dir / 'cover.jpg'
-            if not cover_path.is_file():
-                download_file(session, track.pic_url(args.cover_resolution), cover_path)
+                cover_path = save_dir / 'cover.jpg'
+                if not cover_path.is_file():
+                    download_file(session, cover_url, cover_path)
 
         set_id3_tags(save_path, track, lyrics, cover)
