@@ -32,18 +32,19 @@ FILENAME_CLEAR_RE = re.compile(r'[^\w\-\'() ]+')
 
 TITLE_FMT = '%(title)s (%(version)s)'
 
-
+@dataclass
 class CoverInfo:
     cover_url_template: Optional[str]
-
-    def __init__(self, json_data: dict):
-        og_image = json_data.get('ogImage')
-        if og_image is not None:
-            self.cover_url_template = 'https://' + og_image
 
     def cover_url(self, resolution: int) -> Optional[str]:
         if self.cover_url_template is not None:
             return self.cover_url_template.replace('%%', f'{resolution}x{resolution}')
+
+    @staticmethod
+    def from_json(data: dict):
+        if og_image := data.get('ogImage'):
+            return CoverInfo('https://' + og_image)
+        return CoverInfo(None)
 
 
 @dataclass
@@ -85,8 +86,7 @@ class BasicAlbumInfo:
             return None
         artists = parse_artists(data['artists'])
         title = parse_title(data)
-        release_date = data.get('releaseDate')
-        if release_date is not None:
+        if release_date := data.get('releaseDate'):
             release_date = dt.datetime.fromisoformat(release_date)
         return BasicAlbumInfo(id=data['id'], title=title, year=data.get('year'),
                               artists=artists, release_date=release_date)
@@ -108,19 +108,23 @@ class BasicTrackInfo:
     def from_json(data: dict):
         if not data['available']:
             return None
+        track_id = str(data['id'])
         title = parse_title(data)
-        album_data = data['albums'][0]
+        albums_data = data['albums']
         artists = parse_artists(data['artists'])
-        track_position = album_data.get('trackPosition')
-        if track_position is None:
-            logging.warning('%s - %s не содержит информацию о позиции трека', artists[0], title)
-            track_position = {'index': 1, 'volume': 1}
-        album = BasicAlbumInfo.from_json(album_data)
+        track_position = {'index': 1, 'volume': 1}
+        if len(albums_data) != 0:
+            album_data = data['albums'][0]
+            album = BasicAlbumInfo.from_json(album_data)
+            track_position = album_data.get('trackPosition', track_position)
+        else:
+            album = BasicAlbumInfo(id=track_id, title=title, release_date=None,
+                                   year=None, artists=artists)
         if album is None:
             raise ValueError
-        cover_info = CoverInfo(data)
+        cover_info = CoverInfo.from_json(data)
         has_lyrics = data['lyricsInfo']['hasAvailableTextLyrics']
-        return BasicTrackInfo(title=title, id=str(data['id']), real_id=data['realId'],
+        return BasicTrackInfo(title=title, id=track_id, real_id=data['realId'],
                               number=track_position['index'], disc_number=track_position['volume'],
                               artists=artists, album=album, has_lyrics=has_lyrics, cover_info=cover_info)
 
@@ -162,7 +166,7 @@ class ArtistInfo:
         artist = data['artist']
         albums = map(BasicAlbumInfo.from_json, data.get('albums', []))
         albums = [a for a in albums if a is not None]
-        cover_info = CoverInfo(data)
+        cover_info = CoverInfo.from_json(data)
         return ArtistInfo(id=str(artist['id']), name=artist['name'],
                           cover_info=cover_info, albums=albums)
 
