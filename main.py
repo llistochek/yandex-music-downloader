@@ -1,19 +1,20 @@
 #!/bin/python3
-import logging
 import argparse
+import datetime as dt
 import hashlib
-import time
-import sys
-import urllib.parse
+import logging
 import re
-import eyed3
-from eyed3.id3.frames import ImageFrame
-from typing import Optional
+import sys
+import time
+import urllib.parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from requests import Session
 from pathlib import Path
-import datetime as dt
+from typing import Optional
+
+import eyed3
+from eyed3.id3.frames import ImageFrame
+from requests import Session
 
 MD5_SALT = 'XGRlBW9FXlekgbPrRHuSiA'
 ENCODED_BY = 'https://github.com/llistochek/yandex-music-downloader'
@@ -32,6 +33,7 @@ FILENAME_CLEAR_RE = re.compile(r'[^\w\-\'() ]+')
 
 TITLE_FMT = '%(title)s (%(version)s)'
 
+
 @dataclass
 class CoverInfo:
     cover_url_template: Optional[str]
@@ -40,11 +42,11 @@ class CoverInfo:
         if self.cover_url_template is not None:
             return self.cover_url_template.replace('%%', f'{resolution}x{resolution}')
 
-    @staticmethod
-    def from_json(data: dict):
+    @classmethod
+    def from_json(cls, data: dict) -> 'CoverInfo':
         if og_image := data.get('ogImage'):
-            return CoverInfo('https://' + og_image)
-        return CoverInfo(None)
+            return cls('https://' + og_image)
+        return cls(None)
 
 
 @dataclass
@@ -79,8 +81,8 @@ class BasicAlbumInfo:
     year: Optional[int]
     artists: list[str]
 
-    @staticmethod
-    def from_json(data: dict):
+    @classmethod
+    def from_json(cls, data: dict) -> Optional['BasicAlbumInfo']:
         if data['metaType'] != 'music':
             logging.info('"%s" пропущен т.к. не является музыкальным альбомом', data['title'])
             return None
@@ -88,8 +90,8 @@ class BasicAlbumInfo:
         title = parse_title(data)
         if release_date := data.get('releaseDate'):
             release_date = dt.datetime.fromisoformat(release_date)
-        return BasicAlbumInfo(id=data['id'], title=title, year=data.get('year'),
-                              artists=artists, release_date=release_date)
+        return cls(id=data['id'], title=title, year=data.get('year'),
+                   artists=artists, release_date=release_date)
 
 
 @dataclass
@@ -104,8 +106,8 @@ class BasicTrackInfo:
     has_lyrics: bool
     cover_info: CoverInfo
 
-    @staticmethod
-    def from_json(data: dict):
+    @classmethod
+    def from_json(cls, data: dict) -> Optional['BasicTrackInfo']:
         if not data['available']:
             return None
         track_id = str(data['id'])
@@ -114,7 +116,7 @@ class BasicTrackInfo:
         artists = parse_artists(data['artists'])
         track_position = {'index': 1, 'volume': 1}
         if len(albums_data) != 0:
-            album_data = data['albums'][0]
+            album_data = albums_data[0]
             album = BasicAlbumInfo.from_json(album_data)
             track_position = album_data.get('trackPosition', track_position)
         else:
@@ -124,34 +126,34 @@ class BasicTrackInfo:
             raise ValueError
         cover_info = CoverInfo.from_json(data)
         has_lyrics = data['lyricsInfo']['hasAvailableTextLyrics']
-        return BasicTrackInfo(title=title, id=track_id, real_id=data['realId'],
-                              number=track_position['index'], disc_number=track_position['volume'],
-                              artists=artists, album=album, has_lyrics=has_lyrics, cover_info=cover_info)
+        return cls(title=title, id=track_id, real_id=data['realId'],
+                   number=track_position['index'], disc_number=track_position['volume'],
+                   artists=artists, album=album, has_lyrics=has_lyrics, cover_info=cover_info)
 
 
 @dataclass
 class FullTrackInfo(BasicTrackInfo):
     lyrics: str
 
-    @staticmethod
-    def from_json(data: dict):
+    @classmethod
+    def from_json(cls, data: dict) -> 'FullTrackInfo':
         base = BasicTrackInfo.from_json(data['track'])
         lyrics = data['lyric'][0]['fullLyrics']
-        return FullTrackInfo(**base.__dict__, lyrics=lyrics)
+        return cls(**base.__dict__, lyrics=lyrics)
 
 
 @dataclass
 class FullAlbumInfo(BasicAlbumInfo):
     tracks: list[BasicTrackInfo]
 
-    @staticmethod
-    def from_json(data: dict):
+    @classmethod
+    def from_json(cls, data: dict) -> 'FullAlbumInfo':
         base = BasicAlbumInfo.from_json(data)
         tracks = data.get('volumes', [])
         tracks = [t for v in tracks for t in v]
         tracks = map(BasicTrackInfo.from_json, tracks)
         tracks = [t for t in tracks if t is not None]
-        return FullAlbumInfo(**base.__dict__, tracks=tracks)
+        return cls(**base.__dict__, tracks=tracks)
 
 
 @dataclass
@@ -161,14 +163,14 @@ class ArtistInfo:
     albums: list[BasicAlbumInfo]
     cover_info: CoverInfo
 
-    @staticmethod
-    def from_json(data: dict):
+    @classmethod
+    def from_json(cls, data: dict) -> 'ArtistInfo':
         artist = data['artist']
         albums = map(BasicAlbumInfo.from_json, data.get('albums', []))
         albums = [a for a in albums if a is not None]
         cover_info = CoverInfo.from_json(data)
-        return ArtistInfo(id=str(artist['id']), name=artist['name'],
-                          cover_info=cover_info, albums=albums)
+        return cls(id=str(artist['id']), name=artist['name'],
+                   cover_info=cover_info, albums=albums)
 
 
 def get_track_download_url(session: Session, track: BasicTrackInfo, hq: bool) -> str:
@@ -268,7 +270,10 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
     else:
         release_date = track.album.year
     audiofile = eyed3.load(path)
-    audiofile.tag = tag = eyed3.id3.tag.Tag()
+    if audiofile is None:
+        raise ValueError
+    tag = audiofile.initTag()
+
     tag.artist = chr(0).join(track.artists)
     tag.album_artist = track.album.artists[0]
     tag.album = track.album.title
@@ -327,8 +332,8 @@ if __name__ == '__main__':
     id_group.add_argument('-u', '--url', help='URL исполнителя/альбома/трека/плейлиста')
 
     path_group = parser.add_argument_group('Указание пути')
-    path_group.add_argument('--strict-path', action='store_true',
-                            help='Очищать путь от недопустимых символов')
+    path_group.add_argument('--unsafe-path', action='store_true',
+                            help='Не очищать путь от недопустимых символов')
     path_group.add_argument('--dir', default='.', metavar='<Папка>',
                             help=help_str('Папка для загрузки музыки'), type=Path)
     path_group.add_argument('--path-pattern', default=DEFAULT_PATH_PATTERN,
@@ -403,7 +408,7 @@ if __name__ == '__main__':
 
     for track in result_tracks:
         album = track.album
-        save_path = args.dir / prepare_track_path(args.path_pattern, args.strict_path, track)
+        save_path = args.dir / prepare_track_path(args.path_pattern, not args.unsafe_path, track)
         if args.skip_existing and save_path.is_file():
             continue
 
