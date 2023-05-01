@@ -35,7 +35,7 @@
 Для запуска скрипта требуется Python 3.8+
 ```
 git clone https://github.com/llistochek/yandex-music-downloader.git
-cd yandex-music-download
+cd yandex-music-downloader
 pip install -r requirements.txt
 python3 main.py
 ```
