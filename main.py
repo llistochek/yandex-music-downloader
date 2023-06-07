@@ -394,7 +394,8 @@ if __name__ == '__main__':
 
     def response_hook(resp, *_args, **_kwargs):
         if logging.root.isEnabledFor(logging.DEBUG):
-            if 'application/json' in resp.headers['Content-Type']:
+            target_headers = ['application/json', 'text/xml']
+            if any(h in resp.headers['Content-Type'] for h in target_headers):
                 logging.debug(resp.text)
         time.sleep(args.delay)
 
