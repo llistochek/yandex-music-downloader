@@ -394,9 +394,12 @@ if __name__ == '__main__':
 
     def response_hook(resp, *_args, **_kwargs):
         if logging.root.isEnabledFor(logging.DEBUG):
-            target_headers = ['application/json', 'text/xml']
-            if any(h in resp.headers['Content-Type'] for h in target_headers):
-                logging.debug(resp.text)
+            if resp.status_code >= 400:
+                logging.debug(resp.headers)
+            else:
+                target_headers = ['application/json', 'text/xml']
+                if any(h in resp.headers['Content-Type'] for h in target_headers):
+                    logging.debug(resp.text if len(resp.text) < 310 else resp.text[0:300]+"...cut...")
         time.sleep(args.delay)
 
     session = Session()
