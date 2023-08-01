@@ -31,7 +31,8 @@ PLAYLIST_RE = re.compile(r'([\w\-._]+)/playlists/(\d+)$')
 
 FILENAME_CLEAR_RE = re.compile(r'[^\w\-\'() ]+')
 
-TITLE_FMT = '%(title)s (%(version)s)'
+TITLE_TEMPLATE = '{tile} ({version})'
+TRACK_URL_TEMPLATE = 'https://music.yandex.ru/album/{album_id}/track/{track_id}'
 
 
 @dataclass
@@ -70,7 +71,7 @@ def parse_artists(artists: list) -> list[str]:
 def parse_title(data: dict) -> str:
     title = data['title']
     if version := data.get('version'):
-        title = TITLE_FMT % {'title': title, 'version': version}
+        title = TITLE_TEMPLATE.format(title=title, version=version)
     return title
 
 
@@ -280,8 +281,8 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
     else:
         release_date = track.album.year
     audiofile = eyed3.load(path)
-    if audiofile is None:
-        raise ValueError
+    assert audiofile
+
     tag = audiofile.initTag()
 
     tag.artist = chr(0).join(track.artists)
@@ -292,6 +293,8 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
     tag.disc_num = track.disc_number
     tag.release_date = tag.original_release_date = release_date
     tag.encoded_by = ENCODED_BY
+    tag.audio_file_url = TRACK_URL_TEMPLATE.format(album_id=track.album.id,
+                                                   track_id=track.id)
 
     if lyrics is not None:
         tag.lyrics.set(lyrics)
@@ -472,8 +475,8 @@ if __name__ == '__main__':
             if isinstance(track, FullTrackInfo):
                 lyrics = track.lyrics
             else:
-                full_info = get_full_track_info(session, track.id)
-                lyrics = full_info.lyrics
+                full_track = get_full_track_info(session, track.id)
+                lyrics = full_track.lyrics
 
         cover = None
         cover_url = track.cover_info.cover_url(args.cover_resolution)
