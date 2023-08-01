@@ -92,7 +92,7 @@ usage: main.py [-h] [--hq] [--skip-existing] [--add-lyrics] [--embed-cover]
 
 Загрузчик музыки с сервиса Яндекс.Музыка
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
 
 Общие параметры:
@@ -118,8 +118,9 @@ ID:
   --dir <Папка>         Папка для загрузки музыки (по умолчанию: .)
   --path-pattern <Паттерн>
                         Поддерживает следующие заполнители: #number, #artist,
-                        #album-artist, #title, #album, #year (по умолчанию:
-                        #album-artist/#album/#number - #title)
+                        #album-artist, #title, #album, #year, #artist-id,
+                        #album-id, #track-id (по умолчанию: #album-
+                        artist/#album/#number - #title)
 
 Авторизация:
   --session-id <ID сессии>

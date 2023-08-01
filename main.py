@@ -57,15 +57,39 @@ class PlaylistId:
     kind: int
 
 
-def parse_artists(artists: list) -> list[str]:
-    artists_names = []
-    for artist in artists:
-        artists_names.append(artist['name'])
+@dataclass
+class BasicArtistInfo:
+    id: str
+    name: str
+
+    @classmethod
+    def from_json(cls, data: dict) -> 'BasicArtistInfo':
+        return cls(id=data['id'], name=data['name'])
+
+
+@dataclass
+class FullArtistInfo(BasicArtistInfo):
+    albums: list['BasicAlbumInfo']
+    cover_info: CoverInfo
+
+    @classmethod
+    def from_json(cls, data: dict) -> 'FullArtistInfo':
+        base = BasicArtistInfo.from_json(data['artist'])
+        albums = map(BasicAlbumInfo.from_json, data.get('albums', []))
+        albums = [a for a in albums if a is not None]
+        cover_info = CoverInfo.from_json(data)
+        return cls(**base.__dict__, cover_info=cover_info, albums=albums)
+
+
+def parse_artists(data: list) -> list[BasicArtistInfo]:
+    artists = []
+    for artist in data:
+        artists.append(artist)
         if decomposed := artist.get('decomposed'):
             for d_artist in decomposed:
                 if isinstance(d_artist, dict):
-                    artists_names.append(d_artist['name'])
-    return artists_names
+                    artists.append(d_artist)
+    return [BasicArtistInfo.from_json(a) for a in artists]
 
 
 def parse_title(data: dict) -> str:
@@ -81,7 +105,7 @@ class BasicAlbumInfo:
     title: str
     release_date: Optional[dt.datetime]
     year: Optional[int]
-    artists: list[str]
+    artists: list[BasicArtistInfo]
 
     @classmethod
     def from_json(cls, data: dict) -> Optional['BasicAlbumInfo']:
@@ -108,7 +132,7 @@ class BasicTrackInfo:
     album: BasicAlbumInfo
     number: int
     disc_number: int
-    artists: list[str]
+    artists: list[BasicArtistInfo]
     has_lyrics: bool
     cover_info: CoverInfo
 
@@ -171,25 +195,6 @@ class FullAlbumInfo(BasicAlbumInfo):
         return cls(**base.__dict__, tracks=tracks)
 
 
-@dataclass
-class ArtistInfo:
-    id: str
-    name: str
-    albums: list[BasicAlbumInfo]
-    cover_info: CoverInfo
-
-    @classmethod
-    def from_json(cls, data: dict) -> 'ArtistInfo':
-        artist = data['artist']
-        albums = map(BasicAlbumInfo.from_json, data.get('albums', []))
-        albums = [a for a in albums if a is not None]
-        cover_info = CoverInfo.from_json(data)
-        return cls(id=str(artist['id']),
-                   name=artist['name'],
-                   cover_info=cover_info,
-                   albums=albums)
-
-
 def get_track_download_url(session: Session, track: BasicTrackInfo,
                            hq: bool) -> str:
     resp = session.get('https://music.yandex.ru/api/v2.1/handlers/track'
@@ -235,11 +240,11 @@ def get_full_album_info(session: Session, album_id: str) -> FullAlbumInfo:
     return FullAlbumInfo.from_json(resp.json())
 
 
-def get_artist_info(session: Session, artist_id: str) -> ArtistInfo:
+def get_artist_info(session: Session, artist_id: str) -> FullArtistInfo:
     params = {'artist': artist_id, 'what': 'albums', 'lang': 'ru'}
     resp = session.get('https://music.yandex.ru/handlers/artist.jsx',
                        params=params)
-    return ArtistInfo.from_json(resp.json())
+    return FullArtistInfo.from_json(resp.json())
 
 
 def get_playlist(session: Session,
@@ -257,9 +262,12 @@ def prepare_track_path(path: Path, prepare_path: bool,
                        track: BasicTrackInfo) -> Path:
     path_str = str(path)
     repl_dict = {
+        '#album-artist': track.album.artists[0].name,
+        '#artist-id': track.artists[0].id,
+        '#album-id': track.album.id,
+        '#track-id': track.id,
         '#number': track.number,
-        '#artist': track.artists[0],
-        '#album-artist': track.album.artists[0],
+        '#artist': track.artists[0].name,
         '#title': track.title,
         '#album': track.album.title,
         '#year': track.album.year
@@ -285,8 +293,8 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
 
     tag = audiofile.initTag()
 
-    tag.artist = chr(0).join(track.artists)
-    tag.album_artist = track.album.artists[0]
+    tag.artist = chr(0).join(a.name for a in track.artists)
+    tag.album_artist = track.album.artists[0].name
     tag.album = track.album.title
     tag.title = track.title
     tag.track_num = track.number
@@ -372,14 +380,14 @@ if __name__ == '__main__':
                             metavar='<Папка>',
                             help=help_str('Папка для загрузки музыки'),
                             type=Path)
-    path_group.add_argument('--path-pattern',
-                            default=DEFAULT_PATH_PATTERN,
-                            metavar='<Паттерн>',
-                            type=Path,
-                            help=help_str(
-                                'Поддерживает следующие заполнители:'
-                                ' #number, #artist, #album-artist, #title,'
-                                ' #album, #year'))
+    path_group.add_argument(
+        '--path-pattern',
+        default=DEFAULT_PATH_PATTERN,
+        metavar='<Паттерн>',
+        type=Path,
+        help=help_str('Поддерживает следующие заполнители:'
+                      ' #number, #artist, #album-artist, #title,'
+                      ' #album, #year, #artist-id, #album-id, #track-id'))
 
     auth_group = parser.add_argument_group('Авторизация')
     auth_group.add_argument('--session-id',
