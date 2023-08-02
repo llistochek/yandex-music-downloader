@@ -31,7 +31,7 @@ PLAYLIST_RE = re.compile(r'([\w\-._]+)/playlists/(\d+)$')
 
 FILENAME_CLEAR_RE = re.compile(r'[^\w\-\'() ]+')
 
-TITLE_TEMPLATE = '{tile} ({version})'
+TITLE_TEMPLATE = '{title} ({version})'
 TRACK_URL_TEMPLATE = 'https://music.yandex.ru/album/{album_id}/track/{track_id}'
 
 
@@ -40,15 +40,16 @@ class CoverInfo:
     cover_url_template: Optional[str]
 
     def cover_url(self, resolution: int) -> Optional[str]:
-        if self.cover_url_template is not None:
-            return self.cover_url_template.replace(
-                '%%', f'{resolution}x{resolution}')
+        if self.cover_url_template is None:
+            return
+
+        return self.cover_url_template.replace(
+            '%%', f'{resolution}x{resolution}')
 
     @classmethod
     def from_json(cls, data: dict) -> 'CoverInfo':
-        if og_image := data.get('ogImage'):
-            return cls('https://' + og_image)
-        return cls(None)
+        og_image = data.get("ogImage")
+        return cls(f'https://{og_image}' if og_image is not None else None)
 
 
 @dataclass
@@ -112,7 +113,7 @@ class BasicAlbumInfo:
         if data['metaType'] != 'music':
             logging.info('"%s" пропущен т.к. не является музыкальным альбомом',
                          data['title'])
-            return None
+            return
         artists = parse_artists(data['artists'])
         title = parse_title(data)
         if release_date := data.get('releaseDate'):
@@ -145,7 +146,7 @@ class BasicTrackInfo:
         albums_data = data['albums']
         artists = parse_artists(data['artists'])
         track_position = {'index': 1, 'volume': 1}
-        if len(albums_data) != 0:
+        if len(albums_data):
             album_data = albums_data[0]
             album = BasicAlbumInfo.from_json(album_data)
             track_position = album_data.get('trackPosition', track_position)
@@ -210,8 +211,7 @@ def get_track_download_url(session: Session, track: BasicTrackInfo,
     ts = url_info.find('ts').text
     host = url_info.find('host').text
     path_hash = hashlib.md5((MD5_SALT + path + s).encode()).hexdigest()
-    return 'https://%s/get-mp3/%s/%s/%s?track-id=%s' \
-           % (host, path_hash, ts, path, track.id)
+    return f'https://{host}/get-mp3/{path_hash}/{ts}/{path}?track-id={track.id}'
 
 
 def download_file(session: Session, url: str, path: Path) -> None:
@@ -222,8 +222,7 @@ def download_file(session: Session, url: str, path: Path) -> None:
 
 
 def download_bytes(session: Session, url: str) -> bytes:
-    resp = session.get(url)
-    return resp.content
+    return session.get(url).content
 
 
 def get_full_track_info(session: Session, track_id: str) -> FullTrackInfo:
@@ -430,7 +429,7 @@ if __name__ == '__main__':
             args.playlist_id = PlaylistId(owner=match.group(1),
                                           kind=int(match.group(2)))
         else:
-            print('Параметер url указан в неверном формате')
+            logging.error('Параметер url указан в неверном формате')
             sys.exit(1)
 
     if args.artist_id is None and args.stick_to_artist:
@@ -439,7 +438,6 @@ if __name__ == '__main__':
 
     if args.artist_id is not None:
         artist_info = get_artist_info(session, args.artist_id)
-        albums_count = 0
         for album in artist_info.albums:
             if args.stick_to_artist and album.artists[0] != artist_info.name:
                 logging.info(
@@ -448,9 +446,8 @@ if __name__ == '__main__':
                 continue
             full_album = get_full_album_info(session, album.id)
             result_tracks.extend(full_album.tracks)
-            albums_count += 1
         logging.info(artist_info.name)
-        logging.info('Альбомов: %d', albums_count)
+        logging.info('Альбомов: %d', len(artist_info.albums))
     elif args.album_id is not None:
         album = get_full_album_info(session, args.album_id)
         logging.info(album.title)
@@ -490,6 +487,7 @@ if __name__ == '__main__':
         cover_url = track.cover_info.cover_url(args.cover_resolution)
         if cover_url is not None:
             if args.embed_cover:
+                cover = covers.get(album.id)
                 if cached_cover := covers.get(album.id):
                     cover = cached_cover
                 else:
