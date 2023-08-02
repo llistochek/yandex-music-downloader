@@ -84,8 +84,7 @@ python3 main.py --session-id "<ID Сессии>" --url "https://music.yandex.ru/
 ```
 usage: main.py [-h] [--hq] [--skip-existing] [--add-lyrics] [--embed-cover]
                [--stick-to-artist] [--cover-resolution <Разрешение обложки>]
-               [--delay <Задержка>]
-               [--log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}]
+               [--delay <Задержка>] [--only-music] [--debug]
                (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
                [--unsafe-path] [--dir <Папка>] [--path-pattern <Паттерн>]
                --session-id <ID сессии> [--user-agent <User-Agent>]
@@ -104,7 +103,8 @@ options:
   --cover-resolution <Разрешение обложки>
                         по умолчанию: 400
   --delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 3)
-  --log-level {CRITICAL,FATAL,ERROR,WARN,WARNING,INFO,DEBUG,NOTSET,VERBOSE}
+  --only-music          Загружать только музыкальные альбомы
+  --debug               Включить отладочный вывод
 
 ID:
   --artist-id <ID исполнителя>

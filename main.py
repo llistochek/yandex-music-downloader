@@ -34,6 +34,8 @@ FILENAME_CLEAR_RE = re.compile(r'[^\w\-\'() ]+')
 TITLE_TEMPLATE = '{title} ({version})'
 TRACK_URL_TEMPLATE = 'https://music.yandex.ru/album/{album_id}/track/{track_id}'
 
+logger = logging.getLogger('yandex-music-downloader')
+
 
 @dataclass
 class CoverInfo:
@@ -43,8 +45,8 @@ class CoverInfo:
         if self.cover_url_template is None:
             return
 
-        return self.cover_url_template.replace(
-            '%%', f'{resolution}x{resolution}')
+        return self.cover_url_template.replace('%%',
+                                               f'{resolution}x{resolution}')
 
     @classmethod
     def from_json(cls, data: dict) -> 'CoverInfo':
@@ -107,13 +109,10 @@ class BasicAlbumInfo:
     release_date: Optional[dt.datetime]
     year: Optional[int]
     artists: list[BasicArtistInfo]
+    meta_type: str
 
     @classmethod
     def from_json(cls, data: dict) -> Optional['BasicAlbumInfo']:
-        if data['metaType'] != 'music':
-            logging.info('"%s" пропущен т.к. не является музыкальным альбомом',
-                         data['title'])
-            return
         artists = parse_artists(data['artists'])
         title = parse_title(data)
         if release_date := data.get('releaseDate'):
@@ -121,6 +120,7 @@ class BasicAlbumInfo:
         return cls(id=data['id'],
                    title=title,
                    year=data.get('year'),
+                   meta_type=data['metaType'],
                    artists=artists,
                    release_date=release_date)
 
@@ -155,6 +155,7 @@ class BasicTrackInfo:
                                    title=title,
                                    release_date=None,
                                    year=None,
+                                   meta_type='music',
                                    artists=artists)
         if album is None:
             raise ValueError
@@ -312,7 +313,6 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
 
 
 if __name__ == '__main__':
-    eyed3.log.setLevel("ERROR")
     parser = argparse.ArgumentParser(
         description='Загрузчик музыки с сервиса Яндекс.Музыка')
 
@@ -350,9 +350,12 @@ if __name__ == '__main__':
         metavar='<Задержка>',
         type=int,
         help=help_str('Задержка между запросами, в секундах'))
-    common_group.add_argument('--log-level',
-                              default=DEFAULT_LOG_LEVEL,
-                              choices=logging._nameToLevel.keys())
+    common_group.add_argument('--only-music',
+                              action='store_true',
+                              help='Загружать только музыкальные альбомы')
+    common_group.add_argument('--debug',
+                              action='store_true',
+                              help='Включить отладочный вывод')
 
     def args_playlist_id(arg: str) -> PlaylistId:
         arr = arg.split('/')
@@ -398,15 +401,16 @@ if __name__ == '__main__':
                             help=help_str())
 
     args = parser.parse_args()
-    logging.basicConfig(format='%(asctime)s |%(levelname)s| %(message)s',
-                        datefmt='%H:%M:%S',
-                        level=args.log_level.upper())
+    logging.basicConfig(
+        format='%(asctime)s |%(levelname)s| %(name)s: %(message)s',
+        datefmt='%H:%M:%S',
+        level=logging.DEBUG if args.debug else logging.ERROR)
 
-    def response_hook(resp, *_args, **_kwargs):
-        if logging.root.isEnabledFor(logging.DEBUG):
+    def response_hook(resp, **_kwargs):
+        if logger.isEnabledFor(logging.DEBUG):
             target_headers = ['application/json', 'text/xml']
             if any(h in resp.headers['Content-Type'] for h in target_headers):
-                logging.debug(resp.text)
+                logger.debug(resp.text)
         time.sleep(args.delay)
 
     session = Session()
@@ -429,35 +433,36 @@ if __name__ == '__main__':
             args.playlist_id = PlaylistId(owner=match.group(1),
                                           kind=int(match.group(2)))
         else:
-            logging.error('Параметер url указан в неверном формате')
+            print('Параметер url указан в неверном формате')
             sys.exit(1)
-
-    if args.artist_id is None and args.stick_to_artist:
-        logging.warning('Флаг --stick-to-artist имеет смысл только при'
-                        ' загрузке всех треков исполнителя')
 
     if args.artist_id is not None:
         artist_info = get_artist_info(session, args.artist_id)
+        albums_count = 0
         for album in artist_info.albums:
             if args.stick_to_artist and album.artists[0] != artist_info.name:
-                logging.info(
-                    'Альбом "%s" пропущен из-за флага --stick-to-artist',
-                    album.title)
+                print(f'Альбом "{album.title}" пропущен'
+                      ' из-за флага --stick-to-artist')
+                continue
+            if args.only_music and album.meta_type != 'music':
+                print(f'Альбом "{album.title}" пропущен'
+                      ' т.к. не является музыкальным')
                 continue
             full_album = get_full_album_info(session, album.id)
             result_tracks.extend(full_album.tracks)
-        logging.info(artist_info.name)
-        logging.info('Альбомов: %d', len(artist_info.albums))
+            albums_count += 1
+        print(artist_info.name)
+        print(f'Альбомов: {albums_count}')
     elif args.album_id is not None:
         album = get_full_album_info(session, args.album_id)
-        logging.info(album.title)
+        print(album.title)
         result_tracks = album.tracks
     elif args.track_id is not None:
         result_tracks = [get_full_track_info(session, args.track_id)]
     elif args.playlist_id is not None:
         result_tracks = get_playlist(session, args.playlist_id)
 
-    logging.info('Треков: %d', len(result_tracks))
+    print(f'Треков: {len(result_tracks)}')
     covers: dict[str, bytes] = {}
 
     for track in result_tracks:
@@ -472,7 +477,7 @@ if __name__ == '__main__':
             save_dir.mkdir(parents=True)
 
         url = get_track_download_url(session, track, args.hq)
-        logging.info('Загружается %s', save_path)
+        print(f'Загружается {save_path}')
         download_file(session, url, save_path)
 
         lyrics = None
@@ -487,7 +492,6 @@ if __name__ == '__main__':
         cover_url = track.cover_info.cover_url(args.cover_resolution)
         if cover_url is not None:
             if args.embed_cover:
-                cover = covers.get(album.id)
                 if cached_cover := covers.get(album.id):
                     cover = cached_cover
                 else:
