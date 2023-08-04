@@ -5,6 +5,7 @@ import hashlib
 import logging
 import re
 import sys
+import tempfile
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
@@ -15,6 +16,7 @@ from typing import Optional
 import eyed3
 from eyed3.id3.frames import ImageFrame
 from requests import Session
+from requests_cache import CachedSession, FileCache
 
 MD5_SALT = 'XGRlBW9FXlekgbPrRHuSiA'
 ENCODED_BY = 'https://github.com/llistochek/yandex-music-downloader'
@@ -23,6 +25,9 @@ DEFAULT_DELAY = 3
 DEFAULT_PATH_PATTERN = Path('#album-artist', '#album', '#number - #title')
 DEFAULT_COVER_RESOLUTION = 400
 DEFAULT_LOG_LEVEL = 'INFO'
+
+CACHE_EXPIRE_AFTER = dt.timedelta(hours=8)
+CACHE_DIR = Path(tempfile.gettempdir()) / 'ymd'
 
 TRACK_RE = re.compile(r'track/(\d+)$')
 ALBUM_RE = re.compile(r'album/(\d+)$')
@@ -335,10 +340,6 @@ if __name__ == '__main__':
     common_group.add_argument('--embed-cover',
                               action='store_true',
                               help='Встраивать обложку в .mp3 файл')
-    common_group.add_argument(
-        '--stick-to-artist',
-        action='store_true',
-        help='Загружать только альбомы созданные данным исполнителем')
     common_group.add_argument('--cover-resolution',
                               default=DEFAULT_COVER_RESOLUTION,
                               metavar='<Разрешение обложки>',
@@ -350,12 +351,22 @@ if __name__ == '__main__':
         metavar='<Задержка>',
         type=int,
         help=help_str('Задержка между запросами, в секундах'))
+    common_group.add_argument('--stick-to-artist',
+                              action='store_true',
+                              help='Загружать альбомы, созданные'
+                              ' только данным исполнителем')
     common_group.add_argument('--only-music',
                               action='store_true',
-                              help='Загружать только музыкальные альбомы')
+                              help='Загружать только музыкальные альбомы'
+                              ' (пропускать подкасты и аудиокниги)')
+    common_group.add_argument('--enable-caching',
+                              action='store_true',
+                              help='Включить кэширование. Данная опция полезна'
+                              ' при нестабильном интернете.'
+                              f' (кэш хранится в папке {CACHE_DIR})')
     common_group.add_argument('--debug',
                               action='store_true',
-                              help='Включить отладочный вывод')
+                              help=argparse.SUPPRESS)
 
     def args_playlist_id(arg: str) -> PlaylistId:
         arr = arg.split('/')
@@ -406,19 +417,32 @@ if __name__ == '__main__':
         datefmt='%H:%M:%S',
         level=logging.DEBUG if args.debug else logging.ERROR)
 
-    def response_hook(resp, **_kwargs):
-        if logger.isEnabledFor(logging.DEBUG):
-            target_headers = ['application/json', 'text/xml']
-            if any(h in resp.headers['Content-Type'] for h in target_headers):
-                logger.debug(resp.text)
-        time.sleep(args.delay)
-
     session = Session()
-    session.hooks = {'response': response_hook}
-    session.cookies.set('Session_id', args.session_id, domain='yandex.ru')
-    session.headers['User-Agent'] = args.user_agent
-    session.headers['X-Retpath-Y'] = urllib.parse.quote_plus(
-        'https://music.yandex.ru')
+    cached_session = Session()
+    if args.enable_caching:
+        cached_session = CachedSession(backend=FileCache(cache_name=CACHE_DIR),
+                                       expire_after=CACHE_EXPIRE_AFTER)
+
+    def setup_session(session: Session):
+
+        def response_hook(resp, **kwargs):
+            del kwargs
+            if logger.isEnabledFor(logging.DEBUG):
+                target_headers = ['application/json', 'text/xml']
+                if any(h in resp.headers['Content-Type']
+                       for h in target_headers):
+                    logger.debug(resp.text)
+            if not getattr(resp, 'from_cache', False):
+                time.sleep(args.delay)
+
+        session.hooks = {'response': response_hook}
+        session.cookies.set('Session_id', args.session_id, domain='yandex.ru')
+        session.headers['User-Agent'] = args.user_agent
+        session.headers['X-Retpath-Y'] = urllib.parse.quote_plus(
+            'https://music.yandex.ru')
+
+    setup_session(session)
+    setup_session(cached_session)
 
     result_tracks: list[BasicTrackInfo] = []
 
@@ -437,7 +461,7 @@ if __name__ == '__main__':
             sys.exit(1)
 
     if args.artist_id is not None:
-        artist_info = get_artist_info(session, args.artist_id)
+        artist_info = get_artist_info(cached_session, args.artist_id)
         albums_count = 0
         for album in artist_info.albums:
             if args.stick_to_artist and album.artists[0] != artist_info.name:
@@ -448,19 +472,19 @@ if __name__ == '__main__':
                 print(f'Альбом "{album.title}" пропущен'
                       ' т.к. не является музыкальным')
                 continue
-            full_album = get_full_album_info(session, album.id)
+            full_album = get_full_album_info(cached_session, album.id)
             result_tracks.extend(full_album.tracks)
             albums_count += 1
         print(artist_info.name)
         print(f'Альбомов: {albums_count}')
     elif args.album_id is not None:
-        album = get_full_album_info(session, args.album_id)
+        album = get_full_album_info(cached_session, args.album_id)
         print(album.title)
         result_tracks = album.tracks
     elif args.track_id is not None:
-        result_tracks = [get_full_track_info(session, args.track_id)]
+        result_tracks = [get_full_track_info(cached_session, args.track_id)]
     elif args.playlist_id is not None:
-        result_tracks = get_playlist(session, args.playlist_id)
+        result_tracks = get_playlist(cached_session, args.playlist_id)
 
     print(f'Треков: {len(result_tracks)}')
     covers: dict[str, bytes] = {}

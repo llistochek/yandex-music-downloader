@@ -83,8 +83,8 @@ python3 main.py --session-id "<ID Сессии>" --url "https://music.yandex.ru/
 
 ```
 usage: main.py [-h] [--hq] [--skip-existing] [--add-lyrics] [--embed-cover]
-               [--stick-to-artist] [--cover-resolution <Разрешение обложки>]
-               [--delay <Задержка>] [--only-music] [--debug]
+               [--cover-resolution <Разрешение обложки>] [--delay <Задержка>]
+               [--stick-to-artist] [--only-music] [--enable-caching]
                (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
                [--unsafe-path] [--dir <Папка>] [--path-pattern <Паттерн>]
                --session-id <ID сессии> [--user-agent <User-Agent>]
@@ -99,12 +99,16 @@ options:
   --skip-existing       Пропускать уже загруженные треки
   --add-lyrics          Загружать тексты песен
   --embed-cover         Встраивать обложку в .mp3 файл
-  --stick-to-artist     Загружать только альбомы созданные данным исполнителем
   --cover-resolution <Разрешение обложки>
                         по умолчанию: 400
   --delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 3)
-  --only-music          Загружать только музыкальные альбомы
-  --debug               Включить отладочный вывод
+  --stick-to-artist     Загружать альбомы, созданные только данным
+                        исполнителем
+  --only-music          Загружать только музыкальные альбомы (пропускать
+                        подкасты и аудиокниги)
+  --enable-caching      Включить кэширование. Данная опция полезна при
+                        нестабильном интернете. (кэш хранится в папке
+                        /tmp/ymd)
 
 ID:
   --artist-id <ID исполнителя>
