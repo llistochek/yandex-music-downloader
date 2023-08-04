@@ -432,6 +432,13 @@ if __name__ == '__main__':
                 if any(h in resp.headers['Content-Type']
                        for h in target_headers):
                     logger.debug(resp.text)
+            if not resp.ok:
+                print('Яндекс вернул ошибку. Скорее всего, это связано с'
+                      ' с ограничением количества запросов.'
+                      ' Попробуйте перезапустить скрипт через некоторое время.'
+                      ' Если проблема сохраняется - откройте issue на github.')
+                print(f'Код ошибки: {resp.status_code}')
+                sys.exit(3)
             if not getattr(resp, 'from_cache', False):
                 time.sleep(args.delay)
 
