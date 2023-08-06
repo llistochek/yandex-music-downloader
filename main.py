@@ -37,7 +37,6 @@ PLAYLIST_RE = re.compile(r'([\w\-._]+)/playlists/(\d+)$')
 FILENAME_CLEAR_RE = re.compile(r'[^\w\-\'() ]+')
 
 TITLE_TEMPLATE = '{title} ({version})'
-TRACK_URL_TEMPLATE = 'https://music.yandex.ru/album/{album_id}/track/{track_id}'
 
 logger = logging.getLogger('yandex-music-downloader')
 
@@ -87,24 +86,6 @@ class FullArtistInfo(BasicArtistInfo):
         albums = [a for a in albums if a is not None]
         cover_info = CoverInfo.from_json(data)
         return cls(**base.__dict__, cover_info=cover_info, albums=albums)
-
-
-def parse_artists(data: list) -> list[BasicArtistInfo]:
-    artists = []
-    for artist in data:
-        artists.append(artist)
-        if decomposed := artist.get('decomposed'):
-            for d_artist in decomposed:
-                if isinstance(d_artist, dict):
-                    artists.append(d_artist)
-    return [BasicArtistInfo.from_json(a) for a in artists]
-
-
-def parse_title(data: dict) -> str:
-    title = data['title']
-    if version := data.get('version'):
-        title = TITLE_TEMPLATE.format(title=title, version=version)
-    return title
 
 
 @dataclass
@@ -176,6 +157,10 @@ class BasicTrackInfo:
                    has_lyrics=has_lyrics,
                    cover_info=cover_info)
 
+    @property
+    def url(self) -> str:
+        return f'https://music.yandex.ru/album/{self.album.id}/track/{self.id}'
+
 
 @dataclass
 class FullTrackInfo(BasicTrackInfo):
@@ -200,6 +185,24 @@ class FullAlbumInfo(BasicAlbumInfo):
         tracks = map(BasicTrackInfo.from_json, tracks)
         tracks = [t for t in tracks if t is not None]
         return cls(**base.__dict__, tracks=tracks)
+
+
+def parse_artists(data: list) -> list[BasicArtistInfo]:
+    artists = []
+    for artist in data:
+        artists.append(artist)
+        if decomposed := artist.get('decomposed'):
+            for d_artist in decomposed:
+                if isinstance(d_artist, dict):
+                    artists.append(d_artist)
+    return [BasicArtistInfo.from_json(a) for a in artists]
+
+
+def parse_title(data: dict) -> str:
+    title = data['title']
+    if version := data.get('version'):
+        title = TITLE_TEMPLATE.format(title=title, version=version)
+    return title
 
 
 def get_track_download_url(session: Session, track: BasicTrackInfo,
@@ -266,16 +269,18 @@ def get_playlist(session: Session,
 def prepare_track_path(path: Path, prepare_path: bool,
                        track: BasicTrackInfo) -> Path:
     path_str = str(path)
+    album = track.album
+    artist = album.artists[0]
     repl_dict = {
-        '#album-artist': track.album.artists[0].name,
-        '#artist-id': track.artists[0].id,
-        '#album-id': track.album.id,
+        '#album-artist': album.artists[0].name,
+        '#artist-id': artist.name,
+        '#album-id': album.id,
         '#track-id': track.id,
         '#number': track.number,
-        '#artist': track.artists[0].name,
+        '#artist': artist.name,
         '#title': track.title,
-        '#album': track.album.title,
-        '#year': track.album.year
+        '#album': album.title,
+        '#year': album.year
     }
     for placeholder, replacement in repl_dict.items():
         replacement = str(replacement)
@@ -306,8 +311,7 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
     tag.disc_num = track.disc_number
     tag.release_date = tag.original_release_date = release_date
     tag.encoded_by = ENCODED_BY
-    tag.audio_file_url = TRACK_URL_TEMPLATE.format(album_id=track.album.id,
-                                                   track_id=track.id)
+    tag.audio_file_url = track.url
 
     if lyrics is not None:
         tag.lyrics.set(lyrics)
