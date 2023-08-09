@@ -146,7 +146,8 @@ class BasicTrackInfo:
         if album is None:
             raise ValueError
         cover_info = CoverInfo.from_json(data)
-        has_lyrics = data['lyricsInfo']['hasAvailableTextLyrics']
+        has_lyrics = data.get('lyricsInfo', {}).get('hasAvailableTextLyrics',
+                                                    False)
         return cls(title=title,
                    id=track_id,
                    real_id=data['realId'],
