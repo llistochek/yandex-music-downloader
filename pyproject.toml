@@ -1,0 +1,21 @@
+[build-system]
+requires = [
+    "setuptools",
+    "setuptools-git"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yandex-music-downloader"
+version = "1.0.0"
+description = "Загрузчик музыки с сервиса Яндекс.Музыка"
+requires-python = ">=3.9"
+readme = "README.md"
+dependencies = [
+    "requests",
+    "requests-cache",
+    "eyed3"
+]
+
+[project.scripts]
+yandex-music-downloader = "ymd:__main__"

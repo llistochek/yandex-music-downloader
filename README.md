@@ -34,10 +34,8 @@
 ## Установка
 Для запуска скрипта требуется Python 3.9+
 ```
-git clone https://github.com/llistochek/yandex-music-downloader.git
-cd yandex-music-downloader
-pip install -r requirements.txt
-python3 main.py
+pip install git+https://github.com/llistochek/yandex-music-downloader
+yandex-music-downloader --help
 ```
 
 ## Получение данных для авторизации
@@ -82,12 +80,15 @@ python3 main.py --session-id "<ID Сессии>" --url "https://music.yandex.ru/
 ## Использование
 
 ```
-usage: main.py [-h] [--hq] [--skip-existing] [--add-lyrics] [--embed-cover]
-               [--cover-resolution <Разрешение обложки>] [--delay <Задержка>]
-               [--stick-to-artist] [--only-music] [--enable-caching]
-               (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
-               [--unsafe-path] [--dir <Папка>] [--path-pattern <Паттерн>]
-               --session-id <ID сессии> [--user-agent <User-Agent>]
+usage: yandex-music-downloader [-h] [--hq] [--skip-existing] [--add-lyrics]
+                               [--embed-cover]
+                               [--cover-resolution <Разрешение обложки>]
+                               [--delay <Задержка>] [--stick-to-artist]
+                               [--only-music] [--enable-caching]
+                               (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
+                               [--unsafe-path] [--dir <Папка>]
+                               [--path-pattern <Паттерн>] --session-id <ID
+                               сессии> [--user-agent <User-Agent>]
 
 Загрузчик музыки с сервиса Яндекс.Музыка
 
