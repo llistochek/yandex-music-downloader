@@ -3,6 +3,7 @@ import argparse
 import datetime as dt
 import logging
 import re
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -143,7 +144,7 @@ def main():
                   ' Попробуйте перезапустить скрипт через некоторое время.'
                   ' Если проблема сохраняется - откройте issue на github.')
             print(f'Код ошибки: {resp.status_code}')
-            return 3
+            sys.exit(3)
         if not getattr(resp, 'from_cache', False):
             time.sleep(args.delay)
 
