@@ -212,7 +212,7 @@ def main():
         save_path = args.dir / core.prepare_track_path(args.path_pattern,
                                                        track, args.unsafe_path)
         if args.skip_existing and save_path.is_file():
-            return
+            continue
 
         save_dir = save_path.parent
         if not save_dir.is_dir():
