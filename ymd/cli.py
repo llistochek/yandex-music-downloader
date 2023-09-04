@@ -120,6 +120,7 @@ def main():
     auth_group.add_argument('--session-id',
                             required=True,
                             metavar='<ID сессии>')
+    auth_group.add_argument('--spravka', metavar='<Spravka>')
     auth_group.add_argument('--user-agent',
                             default=DEFAULT_USER_AGENT,
                             metavar='<User-Agent>',
@@ -149,7 +150,8 @@ def main():
             time.sleep(args.delay)
 
     def setup_session(session: Session):
-        core.setup_session(session, args.session_id, args.user_agent)
+        core.setup_session(session, args.session_id, args.user_agent,
+                           args.spravka)
         session.hooks = {'response': response_hook}
 
     session = cached_session = Session()

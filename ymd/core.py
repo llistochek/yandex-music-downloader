@@ -73,9 +73,13 @@ def set_id3_tags(path: Path, track: BasicTrackInfo, lyrics: Optional[str],
     tag.save()
 
 
-def setup_session(session: Session, session_id: str,
-                  user_agent: str) -> Session:
+def setup_session(session: Session,
+                  session_id: str,
+                  user_agent: str,
+                  spravka: Optional[str] = None) -> Session:
     session.cookies.set('Session_id', session_id, domain='yandex.ru')
+    if spravka:
+        session.cookies.set('spravka', spravka, domain='yandex.ru')
     session.headers['User-Agent'] = user_agent
     session.headers['X-Retpath-Y'] = urllib.parse.quote_plus(
         'https://music.yandex.ru')

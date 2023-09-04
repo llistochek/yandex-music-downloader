@@ -88,7 +88,8 @@ usage: yandex-music-downloader [-h] [--hq] [--skip-existing] [--add-lyrics]
                                (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
                                [--unsafe-path] [--dir <Папка>]
                                [--path-pattern <Паттерн>] --session-id <ID
-                               сессии> [--user-agent <User-Agent>]
+                               сессии> [--spravka <Spravka>]
+                               [--user-agent <User-Agent>]
 
 Загрузчик музыки с сервиса Яндекс.Музыка
 
@@ -129,11 +130,24 @@ ID:
 
 Авторизация:
   --session-id <ID сессии>
+  --spravka <Spravka>
   --user-agent <User-Agent>
                         по умолчанию: Mozilla/5.0 (X11; Linux x86_64)
                         AppleWebKit/537.36 (KHTML, like Gecko)
                         Chrome/106.0.0.0 Safari/537.36
 ```
+## Ошибка 400
+Ниже приведена инструкция по устранению ошибки 400.
+Перейдите на сайт Яндекс.Музыки, затем проделайте следующие шаги:
+
+### Для Firefox
+1. Нажмите на иконку замочка слева от адреса сайта
+2. Нажмите `Clear cookies and site data`
+3. Нажмите `Remove`
+4. Перезагрузите страницу
+5. Прорешайте капчу
+6. Скопируйте значение куки `spravka` - передайте его как аргумент
+   `--spravka`
 
 ## Спасибо
 Разработчикам проекта [yandex-music-download](https://github.com/kaimi-io/yandex-music-download). Оттуда был взят [код хэширования](https://github.com/kaimi-io/yandex-music-download/blob/808443cb32be82e1f54b2f708884cb7c941b4371/src/ya.pl#L720).
