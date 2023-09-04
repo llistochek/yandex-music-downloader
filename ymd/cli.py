@@ -140,11 +140,11 @@ def main():
             if any(h in resp.headers['Content-Type'] for h in target_headers):
                 logger.debug(resp.text)
         if not resp.ok:
-            print('Яндекс вернул ошибку. Скорее всего, это связано'
-                  ' с ограничением количества запросов.'
-                  ' Попробуйте перезапустить скрипт через некоторое время.'
-                  ' Если проблема сохраняется - откройте issue на github.')
             print(f'Код ошибки: {resp.status_code}')
+            if resp.status_code == 400:
+                print(
+                    'Информация по устранению данной ошибки: https://github.com/llistochek/yandex-music-downloader#%D0%BE%D1%88%D0%B8%D0%B1%D0%BA%D0%B0-400'
+                )
             sys.exit(3)
         if not getattr(resp, 'from_cache', False):
             time.sleep(args.delay)
