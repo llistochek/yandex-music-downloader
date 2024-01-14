@@ -19,7 +19,9 @@ class CoverInfo:
     @classmethod
     def from_json(cls, data: dict) -> 'CoverInfo':
         og_image = data.get("ogImage")
-        return cls(f'https://{og_image}' if og_image is not None else None)
+        if og_image is None or og_image == "":
+            return cls(None)
+        return cls(f'https://{og_image}')
 
 
 @dataclass
