@@ -11,6 +11,7 @@ from typing import Optional
 
 from requests import Session
 from requests_cache import CachedSession, FileCache
+import math
 
 from ymd import core
 from ymd.ym_api import BasicTrackInfo, PlaylistId, api
@@ -114,7 +115,7 @@ def main():
         type=Path,
         help=help_str('Поддерживает следующие заполнители:'
                       ' #number, #artist, #album-artist, #title,'
-                      ' #album, #year, #artist-id, #album-id, #track-id'))
+                      ' #album, #year, #artist-id, #album-id, #track-id, #track-number'))
 
     auth_group = parser.add_argument_group('Авторизация')
     auth_group.add_argument('--session-id',
@@ -210,9 +211,15 @@ def main():
     print(f'Треков: {len(result_tracks)}')
 
     covers_cache: dict[str, bytes] = {}
+    track_number = 1
+    # track number should be formatted to an appropriate string width with zeros, e.g: 
+    # up to 10 tracks in total - ':02', up to 100 tracks - ':03' etc
+    track_number_pad = math.ceil(math.log10(len(result_tracks)))
+    track_number_format = '{:0' + str(track_number_pad) + '}'
     for track in result_tracks:
         save_path = args.dir / core.prepare_track_path(args.path_pattern,
-                                                       track, args.unsafe_path)
+                                                       track, args.unsafe_path, 
+                                                       track_number_format.format(track_number))
         if args.skip_existing and save_path.is_file():
             continue
 
@@ -229,3 +236,4 @@ def main():
                             embed_cover=args.embed_cover,
                             cover_resolution=args.cover_resolution,
                             covers_cache=covers_cache)
+        track_number += 1
