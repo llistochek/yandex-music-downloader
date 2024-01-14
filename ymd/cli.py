@@ -131,7 +131,7 @@ def main():
         help=show_default(
             "Поддерживает следующие заполнители:"
             " #number, #artist, #album-artist, #title,"
-            " #album, #year, #artist-id, #album-id, #track-id"
+            " #album, #year, #artist-id, #album-id, #track-id, #track-number"
         ),
     )
 
@@ -237,9 +237,14 @@ def main():
     print(f"Треков: {len(result_tracks)}")
 
     covers_cache: dict[str, bytes] = {}
+    track_number = 0
+    # track number should be padded to an appropriate string width with zeroes, e.g:
+    # up to 99 tracks in total - 01, 02, ...; up to 999 tracks - 001, 002, ...; etc.
+    track_number_pad = len(str(len(result_tracks))) # get max track number width
     for track in result_tracks:
+        track_number += 1
         save_path = args.dir / core.prepare_track_path(
-            args.path_pattern, track, args.unsafe_path
+            args.path_pattern, track, args.unsafe_path, str(track_number).zfill(track_number_pad)
         )
         if args.skip_existing and save_path.is_file():
             continue
