@@ -17,7 +17,7 @@ from ymd import core
 from ymd.ym_api import BasicTrackInfo, PlaylistId, api
 
 DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36"
-DEFAULT_DELAY = 1
+DEFAULT_DELAY = 3
 SUPPORTED_BROWSERS = [
     "chrome",
     "opera",
