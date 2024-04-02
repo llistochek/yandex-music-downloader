@@ -1,3 +1,3 @@
 requests
-requests-cache
 eyed3
+browser-cookie3

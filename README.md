@@ -10,7 +10,6 @@
 7. [Спасибо](#Спасибо)
 8. [Дисклеймер](#Дисклеймер)
 
-
 ## О программе
 Загрузчик, созданный вследствие наличия *фатального недостатка* в проекте [yandex-music-download](https://github.com/kaimi-io/yandex-music-download).
 
@@ -40,57 +39,44 @@ yandex-music-downloader --help
 ```
 
 ## Получение данных для авторизации
-Войдите в свой Яндекс аккаунт, затем проделайте следующие шаги:
+1. Войдите в свой Яндекс аккаунт.
+2. Передайте вашего браузера в качестве аргумента `--browser`
 
-### Для Google Chrome/Chromium
-1. Перейдите на сайт Яндекс Музыки (https://music.yandex.ru) 
-2. Нажмите F12
-3. Выберите вкладку Application
-4. Выберите пункт Cookies->https://music.yandex.ru
-5. Скопируйте значение куки (кликните на значение куки 2 раза -> Ctrl+C):
-    - Куки `Session_id` - это аргумент `--session-id`
-
-
-### Для Firefox
-1. Перейдите на сайт Яндекс Музыки (https://music.yandex.ru) 
-2. Нажмите F12
-3. Выберите вкладку Storage
-4. Выберите пункт Куки->https://music.yandex.ru
-5. Скопируйте значение куки (кликните на значение куки 2 раза -> Ctrl+C):
-    - Куки `Session_id` - это аргумент `--session-id`
+Если программа выдает ошибку при загрузке cookies - укажите путь к файлу
+с cookies в качестве аргумента `--cookies-path`. Информацию о
+расположении данного файла для вашего браузера вы можете найти в
+интернете. Если что-то не получается - откройте issue.
 
 
 ## Примеры использования
-Во всех примерах замените `<ID сессии>` на значение куки `Session_id`
+Во всех примерах замените `<браузер>` на название своего браузера (Для
+получения допустимых значений запустите программу с флагом `--help`)
 
 ### Скачать все треки [Twenty One Pilots](https://music.yandex.ru/artist/792433) в высоком качестве
 ```
-python3 main.py --session-id "<ID Сессии>" --hq --url "https://music.yandex.ru/artist/792433"
+python3 main.py --browser "<браузер>" --hq --url "https://music.yandex.ru/artist/792433"
 ```
 
 ### Скачать альбом [Nevermind](https://music.yandex.ru/album/294912) в высоком качестве, загружая тексты песен
 ```
-python3 main.py --session-id "<ID Сессии>" --hq --add-lyrics --url "https://music.yandex.ru/album/294912"
+python3 main.py --browser "<браузер>" --hq --add-lyrics --url "https://music.yandex.ru/album/294912"
 ```
 
 ### Скачать трек [Seven Nation Army](https://music.yandex.ru/album/11644078/track/6705392)
 ```
-python3 main.py --session-id "<ID Сессии>" --url "https://music.yandex.ru/album/11644078/track/6705392"
+python3 main.py --browser "<браузер>" --url "https://music.yandex.ru/album/11644078/track/6705392"
 ```
 
 ## Использование
 
 ```
-usage: yandex-music-downloader [-h] [--hq] [--skip-existing] [--add-lyrics]
-                               [--embed-cover]
-                               [--cover-resolution <Разрешение обложки>]
-                               [--delay <Задержка>] [--stick-to-artist]
-                               [--only-music] [--enable-caching]
-                               (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
-                               [--unsafe-path] [--dir <Папка>]
-                               [--path-pattern <Паттерн>] --session-id <ID
-                               сессии> [--spravka <Spravka>]
-                               [--user-agent <User-Agent>]
+usage: __main__.py [-h] [--hq] [--skip-existing] [--add-lyrics]
+                   [--embed-cover] [--cover-resolution <Разрешение обложки>]
+                   [--delay <Задержка>] [--stick-to-artist] [--only-music]
+                   (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
+                   [--unsafe-path] [--dir <Папка>] [--path-pattern <Паттерн>]
+                   --browser BROWSER [--cookies-path COOKIES_PATH]
+                   [--user-agent <User-Agent>]
 
 Загрузчик музыки с сервиса Яндекс.Музыка
 
@@ -104,14 +90,11 @@ options:
   --embed-cover         Встраивать обложку в .mp3 файл
   --cover-resolution <Разрешение обложки>
                         по умолчанию: 400
-  --delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 3)
+  --delay <Задержка>    Задержка между запросами, в секундах (по умолчанию: 1)
   --stick-to-artist     Загружать альбомы, созданные только данным
                         исполнителем
   --only-music          Загружать только музыкальные альбомы (пропускать
                         подкасты и аудиокниги)
-  --enable-caching      Включить кэширование. Данная опция полезна при
-                        нестабильном интернете. (кэш хранится в папке
-                        /tmp/ymd)
 
 ID:
   --artist-id <ID исполнителя>
@@ -130,8 +113,14 @@ ID:
                         artist/#album/#number - #title)
 
 Авторизация:
-  --session-id <ID сессии>
-  --spravka <Spravka>
+  --browser BROWSER     Браузер из которого будут извлечены данные для
+                        авторизации. Укажите браузер через который вы входили
+                        в Яндекс Музыку. Допустимые значения: chrome, opera,
+                        opera_gx, firefox, edge, safari, chromium, vivaldi,
+                        librewolf
+  --cookies-path COOKIES_PATH
+                        Путь к файлу с cookies. Используйте если возникает
+                        ошибка получения cookies
   --user-agent <User-Agent>
                         по умолчанию: Mozilla/5.0 (X11; Linux x86_64)
                         AppleWebKit/537.36 (KHTML, like Gecko)
@@ -139,16 +128,12 @@ ID:
 ```
 ## Ошибка 400
 Ниже приведена инструкция по устранению ошибки 400.
-Перейдите на сайт Яндекс.Музыки, затем проделайте следующие шаги:
 
-### Для Firefox
-1. Нажмите на иконку замочка слева от адреса сайта
-2. Нажмите `Clear cookies and site data`
-3. Нажмите `Remove`
-4. Перезагрузите страницу
-5. Прорешайте капчу
-6. Скопируйте значение куки `spravka` - передайте его как аргумент
-   `--spravka`
+1. Перейдите на сайт Яндекс.Музыки
+2. Прорешайте капчу
+3. Готово, теперь вы можете скачивать треки без ошибок
+
+Если проблема сохраняется - откройте issue.
 
 ## Спасибо
 Разработчикам проекта [yandex-music-download](https://github.com/kaimi-io/yandex-music-download). Оттуда был взят [код хэширования](https://github.com/kaimi-io/yandex-music-download/blob/808443cb32be82e1f54b2f708884cb7c941b4371/src/ya.pl#L720).
