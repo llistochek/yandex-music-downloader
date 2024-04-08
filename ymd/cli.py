@@ -142,10 +142,10 @@ def main():
     auth_group.add_argument(
         "--browser",
         required=True,
+        choices=SUPPORTED_BROWSERS,
         help=(
             "Браузер из которого будут извлечены данные для авторизации."
             " Укажите браузер через который вы входили в Яндекс Музыку."
-            f" Допустимые значения: {', '.join(SUPPORTED_BROWSERS)}"
         ),
     )
     auth_group.add_argument(
