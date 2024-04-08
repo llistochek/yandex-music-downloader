@@ -15,6 +15,8 @@ from requests import Session
 
 from ymd import core
 from ymd.ym_api import BasicTrackInfo, PlaylistId, api
+from rich.logging import RichHandler
+from rich_argparse import RichHelpFormatter
 
 DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36"
 DEFAULT_DELAY = 3
@@ -55,7 +57,8 @@ def show_default(text: Optional[str] = None) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Загрузчик музыки с сервиса Яндекс.Музыка"
+        description="Загрузчик музыки с сервиса Яндекс.Музыка",
+        formatter_class=RichHelpFormatter
     )
 
     common_group = parser.add_argument_group("Общие параметры")
@@ -159,9 +162,10 @@ def main():
     args = parser.parse_args()
 
     logging.basicConfig(
-        format="%(asctime)s |%(levelname)s| %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-        level=logging.DEBUG if args.debug else logging.ERROR,
+        format="%(message)s",
+        datefmt="[%H:%M:%S]",
+        level=logging.DEBUG if args.debug else logging.INFO,
+        handlers=[RichHandler()]
     )
 
     def response_hook(resp, **kwargs):
@@ -171,7 +175,7 @@ def main():
             if any(h in resp.headers["Content-Type"] for h in target_headers):
                 logger.debug(resp.text)
         if not resp.ok:
-            print(f"Код ошибки: {resp.status_code}")
+            logger.error(f"Код ошибки: {resp.status_code}")
             if resp.status_code == 400:
                 print(
                     "Информация по устранению данной ошибки: https://github.com/llistochek/yandex-music-downloader#%D0%BE%D1%88%D0%B8%D0%B1%D0%BA%D0%B0-400"
@@ -182,7 +186,7 @@ def main():
     try:
         cookies = getattr(browser_cookie3, args.browser)(cookie_file=args.cookies_path)
     except BrowserCookieError:
-        print(f"Не удалось получить cookies для браузера {args.browser}")
+        logger.error(f"Не удалось получить cookies для браузера {args.browser}")
         return 1
 
     session = Session()
@@ -203,7 +207,7 @@ def main():
                 owner=match.group(1), kind=int(match.group(2))
             )
         else:
-            print("Параметер url указан в неверном формате")
+            logger.error("Параметер url указан в неверном формате")
             return 1
 
     if args.artist_id is not None:
@@ -211,30 +215,30 @@ def main():
         albums_count = 0
         for album in artist_info.albums:
             if args.stick_to_artist and album.artists[0].name != artist_info.name:
-                print(
+                logger.info(
                     f'Альбом "{album.title}" пропущен' " из-за флага --stick-to-artist"
                 )
                 continue
             if args.only_music and album.meta_type != "music":
-                print(
+                logger.info(
                     f'Альбом "{album.title}" пропущен' " т.к. не является музыкальным"
                 )
                 continue
             full_album = api.get_full_album_info(session, album.id)
             result_tracks.extend(full_album.tracks)
             albums_count += 1
-        print(artist_info.name)
-        print(f"Альбомов: {albums_count}")
+        logger.info(artist_info.name)
+        logger.info(f"Альбомов: {albums_count}")
     elif args.album_id is not None:
         album = api.get_full_album_info(session, args.album_id)
-        print(album.title)
+        logger.info(album.title)
         result_tracks = album.tracks
     elif args.track_id is not None:
         result_tracks = [api.get_full_track_info(session, args.track_id)]
     elif args.playlist_id is not None:
         result_tracks = api.get_playlist(session, args.playlist_id)
 
-    print(f"Треков: {len(result_tracks)}")
+    logger.info(f"Треков: {len(result_tracks)}")
 
     covers_cache: dict[str, bytes] = {}
     for track in result_tracks:
@@ -248,7 +252,7 @@ def main():
         if not save_dir.is_dir():
             save_dir.mkdir(parents=True)
 
-        print(f"Загружается {save_path}")
+        logger.info(f"Загружается {save_path}")
         core.download_track(
             session=session,
             track=track,

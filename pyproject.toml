@@ -14,7 +14,9 @@ readme = "README.md"
 dependencies = [
     "requests",
     "eyed3",
-    "browser-cookie3"
+    "browser-cookie3",
+    "rich",
+    "rich-argparse"
 ]
 
 [project.scripts]
