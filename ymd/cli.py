@@ -14,6 +14,7 @@ from browser_cookie3 import BrowserCookieError
 from requests import Session
 
 from ymd import core
+from ymd import logger
 from ymd.ym_api import BasicTrackInfo, PlaylistId, api
 from rich.logging import RichHandler
 from rich_argparse import RichHelpFormatter
@@ -40,7 +41,6 @@ ALBUM_RE = re.compile(r"album/(\d+)$")
 ARTIST_RE = re.compile(r"artist/(\d+)$")
 PLAYLIST_RE = re.compile(r"([\w\-._]+)/playlists/(\d+)$")
 
-logger = logging.getLogger("yandex-music-downloader")
 
 
 def args_playlist_id(arg: str) -> api.PlaylistId:
