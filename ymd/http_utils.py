@@ -25,6 +25,7 @@ progress = Progress(
     TimeRemainingColumn(),
 )
 
+
 def copy_url(session: Session, task_id: TaskID, url: str, path: Path) -> None:
     """Копирование данных из URL в локальный файл."""
     progress.console.log(f"Загрузка {path.name}")
@@ -50,6 +51,7 @@ def download_file(session: Session, url: str, path: Path) -> None:
         copy_url(session, task_id, url, path)
     if progress.finished:
         progress.console.log(f"Загружен файл {path.name}")
+        progress.remove_task(task_id)
 
 
 def download_bytes(session: Session, url: str) -> bytes:
