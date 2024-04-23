@@ -238,13 +238,14 @@ def main():
 
     covers_cache: dict[str, bytes] = {}
     track_number = 0
-    # track number should be padded to an appropriate string width with zeroes, e.g:
-    # up to 99 tracks in total - 01, 02, ...; up to 999 tracks - 001, 002, ...; etc.
-    track_number_pad = len(str(len(result_tracks))) # get max track number width
+    track_number_pad = len(str(len(result_tracks)))
     for track in result_tracks:
         track_number += 1
         save_path = args.dir / core.prepare_track_path(
-            args.path_pattern, track, args.unsafe_path, str(track_number).zfill(track_number_pad)
+            args.path_pattern,
+            track,
+            args.unsafe_path,
+            str(track_number).zfill(track_number_pad),
         )
         if args.skip_existing and save_path.is_file():
             continue

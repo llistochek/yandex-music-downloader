@@ -19,7 +19,10 @@ DEFAULT_COVER_RESOLUTION = 400
 
 
 def prepare_track_path(
-    path_pattern: Path, track: BasicTrackInfo, unsafe_path: bool = False, track_number_str: str = ""
+    path_pattern: Path,
+    track: BasicTrackInfo,
+    unsafe_path: bool = False,
+    track_number_str: str = "",
 ) -> Path:
     path_str = str(path_pattern)
     album = track.album
@@ -29,7 +32,7 @@ def prepare_track_path(
         "#artist-id": artist.name,
         "#album-id": album.id,
         "#track-id": track.id,
-        "#track-number": track_number_str,
+        "#number-padded": track_number_str,
         "#number": track.number,
         "#artist": artist.name,
         "#title": track.title,
