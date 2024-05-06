@@ -66,6 +66,9 @@ def main():
         "--skip-existing", action="store_true", help="Пропускать уже загруженные треки"
     )
     common_group.add_argument(
+        "--reverse", action="store_true", help="Загружать треки с конца списка"
+    )
+    common_group.add_argument(
         "--add-lyrics", action="store_true", help="Загружать тексты песен"
     )
     common_group.add_argument(
@@ -239,6 +242,8 @@ def main():
     covers_cache: dict[str, bytes] = {}
     track_number = 0
     track_number_pad = len(str(len(result_tracks)))
+    if args.reverse:
+        result_tracks = reversed(result_tracks)
     for track in result_tracks:
         track_number += 1
         save_path = args.dir / core.prepare_track_path(
