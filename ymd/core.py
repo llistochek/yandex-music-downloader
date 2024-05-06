@@ -27,9 +27,10 @@ def prepare_track_path(
     path_str = str(path_pattern)
     album = track.album
     artist = album.artists[0]
+    artists = [artist.name for artist in track.artists]
     repl_dict = {
         "#album-artist": album.artists[0].name,
-        "#artist-id": artist.name,
+        "#artists": "_".join(artists),
         "#album-id": album.id,
         "#track-id": track.id,
         "#number-padded": track_number_str,
