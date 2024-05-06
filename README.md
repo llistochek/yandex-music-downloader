@@ -87,6 +87,7 @@ options:
   --hq                  Загружать треки в высоком качестве
   --skip-existing       Пропускать уже загруженные треки
   --add-lyrics          Загружать тексты песен
+  --reverse             Загружать треки с конца списка
   --embed-cover         Встраивать обложку в .mp3 файл
   --cover-resolution <Разрешение обложки>
                         по умолчанию: 400
@@ -108,7 +109,7 @@ ID:
   --dir <Папка>         Папка для загрузки музыки (по умолчанию: .)
   --path-pattern <Паттерн>
                         Поддерживает следующие заполнители: #number, #artist,
-                        #album-artist, #title, #album, #year, #artist-id,
+                        #album-artist, #title, #album, #year, #artists,
                         #album-id, #track-id (по умолчанию: #album-
                         artist/#album/#number - #title)
 
