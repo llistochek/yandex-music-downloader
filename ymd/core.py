@@ -1,4 +1,6 @@
+import logging
 import re
+import traceback
 import urllib.parse
 from http.cookiejar import CookieJar
 from pathlib import Path
@@ -16,6 +18,8 @@ FILENAME_CLEAR_RE = re.compile(r"[^\w\-\'() ]+")
 
 DEFAULT_PATH_PATTERN = Path("#album-artist", "#album", "#number - #title")
 DEFAULT_COVER_RESOLUTION = 400
+
+logger = logging.getLogger("yandex-music-downloader")
 
 
 def prepare_track_path(
@@ -97,6 +101,7 @@ def download_track(
     hq: bool = False,
     add_lyrics: bool = False,
     embed_cover: bool = False,
+    skip_broken: bool = False,
 ):
     album = track.album
 
@@ -104,26 +109,38 @@ def download_track(
     http_utils.download_file(session, url, target_path)
 
     lyrics = None
-    if add_lyrics and track.has_lyrics:
-        if isinstance(track, FullTrackInfo):
-            lyrics = track.lyrics
+    try:
+        if add_lyrics and track.has_lyrics:
+            if isinstance(track, FullTrackInfo):
+                lyrics = track.lyrics
+            else:
+                full_track = api.get_full_track_info(session, track.id)
+                lyrics = full_track.lyrics
+    except Exception as e:
+        if skip_broken:
+            logger.error(f"Не удалось загрузить текст песни: {traceback.format_exc()}")
         else:
-            full_track = api.get_full_track_info(session, track.id)
-            lyrics = full_track.lyrics
+            raise e
 
     cover = None
-    cover_url = track.cover_info.cover_url(cover_resolution)
-    if cover_url is not None:
-        if embed_cover:
-            if cached_cover := covers_cache.get(album.id):
-                cover = cached_cover
+    try:
+        cover_url = track.cover_info.cover_url(cover_resolution)
+        if cover_url is not None:
+            if embed_cover:
+                if cached_cover := covers_cache.get(album.id):
+                    cover = cached_cover
+                else:
+                    cover = covers_cache[album.id] = http_utils.download_bytes(
+                        session, cover_url
+                    )
             else:
-                cover = covers_cache[album.id] = http_utils.download_bytes(
-                    session, cover_url
-                )
+                cover_path = target_path.parent / "cover.jpg"
+                if not cover_path.is_file():
+                    http_utils.download_file(session, cover_url, cover_path)
+    except Exception as e:
+        if skip_broken:
+            logger.error(f"Не удалось загрузить обложку: {traceback.format_exc()}")
         else:
-            cover_path = target_path.parent / "cover.jpg"
-            if not cover_path.is_file():
-                http_utils.download_file(session, cover_url, cover_path)
+            raise e
 
     set_id3_tags(target_path, track, lyrics, cover)

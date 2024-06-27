@@ -6,6 +6,7 @@ import re
 import sys
 import tempfile
 import time
+import traceback
 from pathlib import Path
 from typing import Optional
 
@@ -64,6 +65,9 @@ def main():
     )
     common_group.add_argument(
         "--skip-existing", action="store_true", help="Пропускать уже загруженные треки"
+    )
+    common_group.add_argument(
+        "--skip-broken", action="store_true", help="Пропускать треки с ошибками вместо остановки всего процесса"
     )
     common_group.add_argument(
         "--add-lyrics", action="store_true", help="Загружать тексты песен"
@@ -255,13 +259,20 @@ def main():
             save_dir.mkdir(parents=True)
 
         print(f"Загружается {save_path}")
-        core.download_track(
-            session=session,
-            track=track,
-            target_path=save_path,
-            hq=args.hq,
-            add_lyrics=args.add_lyrics,
-            embed_cover=args.embed_cover,
-            cover_resolution=args.cover_resolution,
-            covers_cache=covers_cache,
-        )
+        try:
+            core.download_track(
+                session=session,
+                track=track,
+                target_path=save_path,
+                hq=args.hq,
+                add_lyrics=args.add_lyrics,
+                embed_cover=args.embed_cover,
+                cover_resolution=args.cover_resolution,
+                covers_cache=covers_cache,
+                skip_broken=args.skip_broken,
+            )
+        except Exception as e:
+            if skip_broken:
+                logger.error(f"Не удалось загрузить {save_path}: {traceback.format_exc()}")
+            else:
+                raise e
