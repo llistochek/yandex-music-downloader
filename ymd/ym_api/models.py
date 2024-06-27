@@ -92,6 +92,7 @@ class BasicTrackInfo:
     artists: list[BasicArtistInfo]
     has_lyrics: bool
     cover_info: CoverInfo
+    full_info: dict
 
     @classmethod
     def from_json(cls, data: dict) -> Optional["BasicTrackInfo"]:
@@ -130,9 +131,10 @@ class BasicTrackInfo:
                 album=album,
                 has_lyrics=has_lyrics,
                 cover_info=cover_info,
+                full_info=data
             )
         except Exception:
-            logger.error(traceback.format_exc())
+            logger.error(f"Ошибка парсинга BasicTrackInfo: {data.items()}. {traceback.format_exc()}")
             return None
 
     @property
@@ -151,7 +153,7 @@ class FullTrackInfo(BasicTrackInfo):
             lyrics = data["lyric"][0]["fullLyrics"]
             return cls(**base.__dict__, lyrics=lyrics)
         except Exception:
-            logger.error(traceback.format_exc())
+            logger.error(f"Ошибка парсинга FullTrackInfo: {data.items()}. {traceback.format_exc()}")
             return None
 
 

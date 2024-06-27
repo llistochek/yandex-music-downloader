@@ -272,7 +272,7 @@ def main():
                 skip_broken=args.skip_broken,
             )
         except Exception as e:
-            if skip_broken:
-                logger.error(f"Не удалось загрузить {save_path}: {traceback.format_exc()}")
+            if args.skip_broken:
+                logger.error(f"Не удалось загрузить {save_path}: {track.items()}. {traceback.format_exc()}")
             else:
                 raise e

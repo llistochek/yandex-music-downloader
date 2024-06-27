@@ -118,7 +118,7 @@ def download_track(
                 lyrics = full_track.lyrics
     except Exception as e:
         if skip_broken:
-            logger.error(f"Не удалось загрузить текст песни: {traceback.format_exc()}")
+            logger.error(f"Не удалось загрузить текст песни: {track.full_info.items()}. {traceback.format_exc()}")
         else:
             raise e
 
@@ -139,7 +139,7 @@ def download_track(
                     http_utils.download_file(session, cover_url, cover_path)
     except Exception as e:
         if skip_broken:
-            logger.error(f"Не удалось загрузить обложку: {traceback.format_exc()}")
+            logger.error(f"Не удалось загрузить обложку: {track.full_info.items()}. {traceback.format_exc()}")
         else:
             raise e
 
