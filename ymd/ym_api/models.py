@@ -92,7 +92,10 @@ class BasicTrackInfo:
 
     @classmethod
     def from_json(cls, data: dict) -> Optional["BasicTrackInfo"]:
-        if not data["available"]:
+        try:
+            if not data["available"]:
+                return None
+        except:
             return None
         track_id = str(data["id"])
         title = parse_title(data)
