@@ -92,7 +92,7 @@ class BasicTrackInfo:
 
     @classmethod
     def from_json(cls, data: dict) -> Optional["BasicTrackInfo"]:
-        if not data["available"]:
+        if not data.get("available", False):
             return None
         track_id = str(data["id"])
         title = parse_title(data)
@@ -138,8 +138,10 @@ class FullTrackInfo(BasicTrackInfo):
     lyrics: str
 
     @classmethod
-    def from_json(cls, data: dict) -> "FullTrackInfo":
+    def from_json(cls, data: dict) -> Optional["FullTrackInfo"]:
         base = BasicTrackInfo.from_json(data["track"])
+        if base is None:
+            return None
         lyrics = data["lyric"][0]["fullLyrics"]
         return cls(**base.__dict__, lyrics=lyrics)
 

@@ -109,8 +109,8 @@ ID:
   --path-pattern <Паттерн>
                         Поддерживает следующие заполнители: #number, #artist,
                         #album-artist, #title, #album, #year, #artist-id,
-                        #album-id, #track-id (по умолчанию: #album-
-                        artist/#album/#number - #title)
+                        #album-id, #track-id, #track-number (по умолчанию:
+                        #album-artist/#album/#number - #title)
 
 Авторизация:
   --browser BROWSER     Браузер из которого будут извлечены данные для

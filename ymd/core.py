@@ -109,7 +109,8 @@ def download_track(
             lyrics = track.lyrics
         else:
             full_track = api.get_full_track_info(session, track.id)
-            lyrics = full_track.lyrics
+            if full_track is not None:
+                lyrics = full_track.lyrics
 
     cover = None
     cover_url = track.cover_info.cover_url(cover_resolution)

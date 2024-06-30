@@ -230,7 +230,12 @@ def main():
         print(album.title)
         result_tracks = album.tracks
     elif args.track_id is not None:
-        result_tracks = [api.get_full_track_info(session, args.track_id)]
+        track = api.get_full_track_info(session, args.track_id)
+        if track is not None:
+            result_tracks = [track]
+        else:
+            logger.info("Трек не доступен для скачивания")
+            return 1
     elif args.playlist_id is not None:
         result_tracks = api.get_playlist(session, args.playlist_id)
 
