@@ -70,8 +70,8 @@ python3 main.py --browser "<браузер>" --url "https://music.yandex.ru/albu
 ## Использование
 
 ```
-usage: __main__.py [-h] [--hq] [--skip-existing] [--skip-broken]
-                   [--add-lyrics] [--embed-cover] [--cover-resolution <Разрешение обложки>]
+usage: __main__.py [-h] [--hq] [--skip-existing] [--add-lyrics]
+                   [--embed-cover] [--cover-resolution <Разрешение обложки>]
                    [--delay <Задержка>] [--stick-to-artist] [--only-music]
                    (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
                    [--unsafe-path] [--dir <Папка>] [--path-pattern <Паттерн>]
@@ -86,7 +86,6 @@ options:
 Общие параметры:
   --hq                  Загружать треки в высоком качестве
   --skip-existing       Пропускать уже загруженные треки
-  --skip-broken         Пропускать треки с ошибками вместо остановки всего процесса
   --add-lyrics          Загружать тексты песен
   --embed-cover         Встраивать обложку в .mp3 файл
   --cover-resolution <Разрешение обложки>
@@ -110,8 +109,8 @@ ID:
   --path-pattern <Паттерн>
                         Поддерживает следующие заполнители: #number, #artist,
                         #album-artist, #title, #album, #year, #artist-id,
-                        #album-id, #track-id (по умолчанию: #album-
-                        artist/#album/#number - #title)
+                        #album-id, #track-id, #track-number (по умолчанию:
+                        #album-artist/#album/#number - #title)
 
 Авторизация:
   --browser BROWSER     Браузер из которого будут извлечены данные для

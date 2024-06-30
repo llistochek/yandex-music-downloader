@@ -67,9 +67,6 @@ def main():
         "--skip-existing", action="store_true", help="Пропускать уже загруженные треки"
     )
     common_group.add_argument(
-        "--skip-broken", action="store_true", help="Пропускать треки с ошибками вместо остановки всего процесса"
-    )
-    common_group.add_argument(
         "--add-lyrics", action="store_true", help="Загружать тексты песен"
     )
     common_group.add_argument(
@@ -234,7 +231,12 @@ def main():
         print(album.title)
         result_tracks = album.tracks
     elif args.track_id is not None:
-        result_tracks = [api.get_full_track_info(session, args.track_id)]
+        track = api.get_full_track_info(session, args.track_id)
+        if track is not None:
+            result_tracks = [track]
+        else:
+            logger.info("Трек не доступен для скачивания")
+            return 1
     elif args.playlist_id is not None:
         result_tracks = api.get_playlist(session, args.playlist_id)
 
@@ -269,10 +271,7 @@ def main():
                 embed_cover=args.embed_cover,
                 cover_resolution=args.cover_resolution,
                 covers_cache=covers_cache,
-                skip_broken=args.skip_broken,
             )
-        except Exception as e:
-            if args.skip_broken:
-                logger.error(f"Не удалось загрузить {save_path}: {track.items()}. {traceback.format_exc()}")
-            else:
-                raise e
+        except Exception:
+            logger.error(f"Не удалось загрузить {save_path}")
+            logger.debug(traceback.format_exc())

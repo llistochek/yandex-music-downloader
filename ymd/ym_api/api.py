@@ -27,7 +27,7 @@ def get_track_download_url(session: Session, track: BasicTrackInfo, hq: bool) ->
     return f"https://{host}/get-mp3/{path_hash}/{ts}/{path}?track-id={track.id}"
 
 
-def get_full_track_info(session: Session, track_id: str) -> FullTrackInfo:
+def get_full_track_info(session: Session, track_id: str) -> Optional[FullTrackInfo]:
     params = {"track": track_id, "lang": "ru"}
     resp = session.get("https://music.yandex.ru/handlers/track.jsx", params=params)
     return FullTrackInfo.from_json(resp.json())

@@ -1,12 +1,9 @@
 import datetime as dt
-import logging
-import traceback
 from dataclasses import dataclass
 from typing import Optional
 
 TITLE_TEMPLATE = "{title} ({version})"
 
-logger = logging.getLogger("yandex-music-downloader")
 
 @dataclass
 class CoverInfo:
@@ -92,50 +89,44 @@ class BasicTrackInfo:
     artists: list[BasicArtistInfo]
     has_lyrics: bool
     cover_info: CoverInfo
-    full_info: dict
 
     @classmethod
     def from_json(cls, data: dict) -> Optional["BasicTrackInfo"]:
-        try:
-            if not data["available"]:
-                return None
-            track_id = str(data["id"])
-            title = parse_title(data)
-            albums_data = data["albums"]
-            artists = parse_artists(data["artists"])
-            track_position = {"index": 1, "volume": 1}
-            if len(albums_data):
-                album_data = albums_data[0]
-                album = BasicAlbumInfo.from_json(album_data)
-                track_position = album_data.get("trackPosition", track_position)
-            else:
-                album = BasicAlbumInfo(
-                    id=track_id,
-                    title=title,
-                    release_date=None,
-                    year=None,
-                    meta_type="music",
-                    artists=artists,
-                )
-            if album is None:
-                raise ValueError
-            cover_info = CoverInfo.from_json(data)
-            has_lyrics = data.get("lyricsInfo", {}).get("hasAvailableTextLyrics", False)
-            return cls(
-                title=title,
-                id=track_id,
-                real_id=data["realId"],
-                number=track_position["index"],
-                disc_number=track_position["volume"],
-                artists=artists,
-                album=album,
-                has_lyrics=has_lyrics,
-                cover_info=cover_info,
-                full_info=data
-            )
-        except Exception:
-            logger.error(f"Ошибка парсинга BasicTrackInfo: {data.items()}. {traceback.format_exc()}")
+        if not data.get("available", False):
             return None
+        track_id = str(data["id"])
+        title = parse_title(data)
+        albums_data = data["albums"]
+        artists = parse_artists(data["artists"])
+        track_position = {"index": 1, "volume": 1}
+        if len(albums_data):
+            album_data = albums_data[0]
+            album = BasicAlbumInfo.from_json(album_data)
+            track_position = album_data.get("trackPosition", track_position)
+        else:
+            album = BasicAlbumInfo(
+                id=track_id,
+                title=title,
+                release_date=None,
+                year=None,
+                meta_type="music",
+                artists=artists,
+            )
+        if album is None:
+            raise ValueError
+        cover_info = CoverInfo.from_json(data)
+        has_lyrics = data.get("lyricsInfo", {}).get("hasAvailableTextLyrics", False)
+        return cls(
+            title=title,
+            id=track_id,
+            real_id=data["realId"],
+            number=track_position["index"],
+            disc_number=track_position["volume"],
+            artists=artists,
+            album=album,
+            has_lyrics=has_lyrics,
+            cover_info=cover_info,
+        )
 
     @property
     def url(self) -> str:
@@ -147,14 +138,12 @@ class FullTrackInfo(BasicTrackInfo):
     lyrics: str
 
     @classmethod
-    def from_json(cls, data: dict) -> "FullTrackInfo":
-        try:
-            base = BasicTrackInfo.from_json(data["track"])
-            lyrics = data["lyric"][0]["fullLyrics"]
-            return cls(**base.__dict__, lyrics=lyrics)
-        except Exception:
-            logger.error(f"Ошибка парсинга FullTrackInfo: {data.items()}. {traceback.format_exc()}")
+    def from_json(cls, data: dict) -> Optional["FullTrackInfo"]:
+        base = BasicTrackInfo.from_json(data["track"])
+        if base is None:
             return None
+        lyrics = data["lyric"][0]["fullLyrics"]
+        return cls(**base.__dict__, lyrics=lyrics)
 
 
 @dataclass
