@@ -1,3 +1,5 @@
 requests
 eyed3
 browser-cookie3
+rich
+rich-argparse
