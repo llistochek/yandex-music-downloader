@@ -128,10 +128,6 @@ class BasicTrackInfo:
             cover_info=cover_info,
         )
 
-    @property
-    def url(self) -> str:
-        return f"https://music.yandex.ru/album/{self.album.id}/track/{self.id}"
-
 
 @dataclass
 class FullTrackInfo(BasicTrackInfo):

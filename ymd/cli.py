@@ -8,16 +8,18 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 import browser_cookie3
 from browser_cookie3 import BrowserCookieError
 from requests import Session
 
 from ymd import core
-from ymd.ym_api import BasicTrackInfo, PlaylistId, api
+from ymd.ym_api import BasicTrackInfo, PlaylistId, YandexMusicApi, api
 
 DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36"
 DEFAULT_DELAY = 3
+DEFAULT_DOMAIN = "music.yandex.ru"
 SUPPORTED_BROWSERS = [
     "chrome",
     "opera",
@@ -33,7 +35,7 @@ SUPPORTED_BROWSERS = [
 CACHE_EXPIRE_AFTER = dt.timedelta(hours=8)
 CACHE_DIR = Path(tempfile.gettempdir()) / "ymd"
 
-TRACK_RE = re.compile(r"track/(\d+)$")
+TRACK_RE = re.compile(r"track/(\d+)")
 ALBUM_RE = re.compile(r"album/(\d+)$")
 ARTIST_RE = re.compile(r"artist/(\d+)$")
 PLAYLIST_RE = re.compile(r"([\w\-._]+)/playlists/(\d+)$")
@@ -185,29 +187,33 @@ def main():
         print(f"Не удалось получить cookies для браузера {args.browser}")
         return 1
 
-    session = Session()
-    core.setup_session(session, cookies, DEFAULT_USER_AGENT)
-    session.hooks = {"response": response_hook}
-
     result_tracks: list[BasicTrackInfo] = []
 
+    domain = DEFAULT_DOMAIN
     if args.url is not None:
-        if match := ARTIST_RE.search(args.url):
+        parsed_url = urlparse(args.url)
+        path = parsed_url.path
+        if match := ARTIST_RE.search(path):
             args.artist_id = match.group(1)
-        elif match := ALBUM_RE.search(args.url):
+        elif match := ALBUM_RE.search(path):
             args.album_id = match.group(1)
-        elif match := TRACK_RE.search(args.url):
+        elif match := TRACK_RE.search(path):
             args.track_id = match.group(1)
-        elif match := PLAYLIST_RE.search(args.url):
+        elif match := PLAYLIST_RE.search(path):
             args.playlist_id = PlaylistId(
                 owner=match.group(1), kind=int(match.group(2))
             )
         else:
             print("Параметер url указан в неверном формате")
             return 1
+        domain = parsed_url.hostname
+    session = Session()
+    core.setup_session(session, cookies, DEFAULT_USER_AGENT, domain)
+    session.hooks = {"response": response_hook}
+    client = YandexMusicApi(session, domain)
 
     if args.artist_id is not None:
-        artist_info = api.get_artist_info(session, args.artist_id)
+        artist_info = client.get_artist_info(args.artist_id)
         albums_count = 0
         for album in artist_info.albums:
             if args.stick_to_artist and album.artists[0].name != artist_info.name:
@@ -220,24 +226,24 @@ def main():
                     f'Альбом "{album.title}" пропущен' " т.к. не является музыкальным"
                 )
                 continue
-            full_album = api.get_full_album_info(session, album.id)
+            full_album = client.get_full_album_info(album.id)
             result_tracks.extend(full_album.tracks)
             albums_count += 1
         print(artist_info.name)
         print(f"Альбомов: {albums_count}")
     elif args.album_id is not None:
-        album = api.get_full_album_info(session, args.album_id)
+        album = client.get_full_album_info(args.album_id)
         print(album.title)
         result_tracks = album.tracks
     elif args.track_id is not None:
-        track = api.get_full_track_info(session, args.track_id)
+        track = client.get_full_track_info(args.track_id)
         if track is not None:
             result_tracks = [track]
         else:
             logger.info("Трек не доступен для скачивания")
             return 1
     elif args.playlist_id is not None:
-        result_tracks = api.get_playlist(session, args.playlist_id)
+        result_tracks = client.get_playlist(args.playlist_id)
 
     print(f"Треков: {len(result_tracks)}")
 
@@ -261,7 +267,7 @@ def main():
 
         print(f"Загружается {save_path}")
         core.download_track(
-            session=session,
+            client=client,
             track=track,
             target_path=save_path,
             hq=args.hq,
