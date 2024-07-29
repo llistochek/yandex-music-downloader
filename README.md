@@ -54,29 +54,32 @@ yandex-music-downloader --help
 
 ### Скачать все треки [Twenty One Pilots](https://music.yandex.ru/artist/792433) в высоком качестве
 ```
-python3 main.py --browser "<браузер>" --hq --url "https://music.yandex.ru/artist/792433"
+yandex-music-downloader --browser "<браузер>" --hq --url "https://music.yandex.ru/artist/792433"
 ```
 
 ### Скачать альбом [Nevermind](https://music.yandex.ru/album/294912) в высоком качестве, загружая тексты песен
 ```
-python3 main.py --browser "<браузер>" --hq --add-lyrics --url "https://music.yandex.ru/album/294912"
+yandex-music-downloader --browser "<браузер>" --hq --add-lyrics --url "https://music.yandex.ru/album/294912"
 ```
 
 ### Скачать трек [Seven Nation Army](https://music.yandex.ru/album/11644078/track/6705392)
 ```
-python3 main.py --browser "<браузер>" --url "https://music.yandex.ru/album/11644078/track/6705392"
+yandex-music-downloader --browser "<браузер>" --url "https://music.yandex.ru/album/11644078/track/6705392"
 ```
 
 ## Использование
 
 ```
-usage: __main__.py [-h] [--hq] [--skip-existing] [--add-lyrics]
-                   [--embed-cover] [--cover-resolution <Разрешение обложки>]
-                   [--delay <Задержка>] [--stick-to-artist] [--only-music]
-                   (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
-                   [--unsafe-path] [--dir <Папка>] [--path-pattern <Паттерн>]
-                   --browser BROWSER [--cookies-path COOKIES_PATH]
-                   [--user-agent <User-Agent>]
+usage: yandex-music-downloader [-h] [--hq] [--skip-existing] [--add-lyrics]
+                               [--embed-cover]
+                               [--cover-resolution <Разрешение обложки>]
+                               [--delay <Задержка>] [--stick-to-artist]
+                               [--only-music]
+                               (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
+                               [--unsafe-path] [--dir <Папка>]
+                               [--path-pattern <Паттерн>] --browser BROWSER
+                               [--cookies-path COOKIES_PATH]
+                               [--user-agent <User-Agent>]
 
 Загрузчик музыки с сервиса Яндекс.Музыка
 
