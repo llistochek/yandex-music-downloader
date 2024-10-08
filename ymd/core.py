@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 import eyed3
+import requests
 from eyed3.id3.frames import ImageFrame
 from requests import Session
 
@@ -81,6 +82,10 @@ def set_id3_tags(
         tag.images.set(ImageFrame.FRONT_COVER, album_cover, "image/jpeg")
 
     tag.save()
+
+
+def setup_networking(enable_ipv6: bool):
+    requests.packages.urllib3.util.connection.HAS_IPV6 = enable_ipv6  # type: ignore
 
 
 def setup_session(

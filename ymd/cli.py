@@ -157,6 +157,9 @@ def main():
         metavar="<User-Agent>",
         help=show_default(),
     )
+    parser.add_argument(
+        "--enable-ipv6", action="store_true", default=False, help=argparse.SUPPRESS
+    )
 
     args = parser.parse_args()
 
@@ -207,7 +210,9 @@ def main():
             print("Параметер url указан в неверном формате")
             return 1
         domain = parsed_url.hostname
+
     session = Session()
+    core.setup_networking(args.enable_ipv6)
     core.setup_session(session, cookies, DEFAULT_USER_AGENT, domain)
     session.hooks = {"response": response_hook}
     client = YandexMusicApi(session, domain)
