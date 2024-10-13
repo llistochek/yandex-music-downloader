@@ -74,7 +74,7 @@ usage: yandex-music-downloader [-h] [--hq] [--skip-existing] [--add-lyrics]
                                [--embed-cover]
                                [--cover-resolution <Разрешение обложки>]
                                [--delay <Задержка>] [--stick-to-artist]
-                               [--only-music]
+                               [--only-music] [--disable-ipv6]
                                (--artist-id <ID исполнителя> | --album-id <ID альбома> | --track-id <ID трека> | --playlist-id <владелец плейлиста>/<тип плейлиста> | -u URL)
                                [--unsafe-path] [--dir <Папка>]
                                [--path-pattern <Паттерн>] --browser BROWSER
@@ -98,6 +98,8 @@ options:
                         исполнителем
   --only-music          Загружать только музыкальные альбомы (пропускать
                         подкасты и аудиокниги)
+  --disable-ipv6        Отключить IPv6. Используйте при проблемах с
+                        подключением
 
 ID:
   --artist-id <ID исполнителя>

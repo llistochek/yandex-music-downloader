@@ -90,13 +90,18 @@ def main():
     common_group.add_argument(
         "--stick-to-artist",
         action="store_true",
-        help="Загружать альбомы, созданные" " только данным исполнителем",
+        help="Загружать альбомы, созданные только данным исполнителем",
     )
     common_group.add_argument(
         "--only-music",
         action="store_true",
         help="Загружать только музыкальные альбомы"
         " (пропускать подкасты и аудиокниги)",
+    )
+    common_group.add_argument(
+        "--disable-ipv6",
+        action="store_true",
+        help="Отключить IPv6. Используйте при проблемах с подключением",
     )
     common_group.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
 
@@ -157,9 +162,6 @@ def main():
         metavar="<User-Agent>",
         help=show_default(),
     )
-    parser.add_argument(
-        "--enable-ipv6", action="store_true", default=False, help=argparse.SUPPRESS
-    )
 
     args = parser.parse_args()
 
@@ -212,7 +214,7 @@ def main():
         domain = parsed_url.hostname
 
     session = Session()
-    core.setup_networking(args.enable_ipv6)
+    core.setup_networking(enable_ipv6=not args.disable_ipv6)
     core.setup_session(session, cookies, DEFAULT_USER_AGENT, domain)
     session.hooks = {"response": response_hook}
     client = YandexMusicApi(session, domain)
