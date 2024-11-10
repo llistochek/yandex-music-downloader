@@ -7,7 +7,7 @@ import time
 import typing
 from collections.abc import Generator, Iterable
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 from urllib.parse import urlparse
 
 from yandex_music import Album, Client, Playlist, Track
@@ -151,7 +151,7 @@ def main():
     client = Client(args.token).init()
     result_tracks: Iterable[Track] = []
 
-    def album_tracks_gen(album_ids: Iterable[int | str]) -> Generator[Track]:
+    def album_tracks_gen(album_ids: Iterable[Union[int, str]]) -> Generator[Track]:
         for album_id in album_ids:
             if full_album := client.albums_with_tracks(album_id):
                 if volumes := full_album.volumes:

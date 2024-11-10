@@ -15,7 +15,7 @@ DEFAULT_PATH_PATTERN = Path("#album-artist", "#album", "#number - #title")
 DEFAULT_COVER_RESOLUTION = 400
 
 
-def full_title(obj: YandexMusicObject) -> str | None:
+def full_title(obj: YandexMusicObject) -> Optional[str]:
     result = obj["title"]
     if result is None:
         return
