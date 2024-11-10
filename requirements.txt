@@ -1,3 +1,2 @@
-requests
+yandex-music
 eyed3
-browser-cookie3
