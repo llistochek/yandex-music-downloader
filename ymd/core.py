@@ -1,17 +1,12 @@
 import re
-import urllib.parse
-from http.cookiejar import CookieJar
+import typing
+from datetime import datetime as dt
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import eyed3
-import requests
 from eyed3.id3.frames import ImageFrame
-from requests import Session
-
-from ymd import http_utils
-from ymd.ym_api import BasicTrackInfo, FullTrackInfo
-from ymd.ym_api.api import YandexMusicApi
+from yandex_music import Track, YandexMusicObject
 
 ENCODED_BY = "https://github.com/llistochek/yandex-music-downloader"
 FILENAME_CLEAR_RE = re.compile(r"[^\w\-\'() ]+")
@@ -20,25 +15,34 @@ DEFAULT_PATH_PATTERN = Path("#album-artist", "#album", "#number - #title")
 DEFAULT_COVER_RESOLUTION = 400
 
 
+def full_title(obj: YandexMusicObject) -> str | None:
+    result = obj["title"]
+    if result is None:
+        return
+    if version := obj["version"]:
+        result += f" ({version})"
+    return result
+
+
 def prepare_track_path(
-    path_pattern: Path,
-    track: BasicTrackInfo,
-    unsafe_path: bool = False,
-    track_number_str: str = "",
+    path_pattern: Path, track: Track, unsafe_path: bool = False
 ) -> Path:
     path_str = str(path_pattern)
-    album = track.album
+    album = track.albums[0]
     artist = album.artists[0]
-    repl_dict = {
+    track_position = album.track_position
+    repl_dict: dict[str, Union[str, int, None]] = {
+        "#number-padded": str(track_position.index).zfill(len(str(album.track_count)))
+        if track_position
+        else None,
         "#album-artist": album.artists[0].name,
         "#artist-id": artist.name,
         "#album-id": album.id,
         "#track-id": track.id,
-        "#number-padded": track_number_str,
-        "#number": track.number,
+        "#number": track_position.index if track_position else None,
         "#artist": artist.name,
-        "#title": track.title,
-        "#album": album.title,
+        "#title": full_title(track),
+        "#album": full_title(album),
         "#year": album.year,
     }
     for placeholder, replacement in repl_dict.items():
@@ -52,29 +56,31 @@ def prepare_track_path(
 
 def set_id3_tags(
     path: Path,
-    track: BasicTrackInfo,
+    track: Track,
     lyrics: Optional[str],
     album_cover: Optional[bytes],
-    domain: str,
 ) -> None:
-    if track.album.release_date is not None:
-        release_date = eyed3.core.Date(*track.album.release_date.timetuple()[:6])
+    album = track.albums[0]
+    if album.release_date is not None:
+        datetime = dt.fromisoformat(album.release_date)
+        release_date = eyed3.core.Date(*datetime.timetuple()[:6])
     else:
-        release_date = track.album.year
+        release_date = album.year
     audiofile = eyed3.load(path)
     assert audiofile
 
     tag = audiofile.initTag()
 
-    tag.artist = chr(0).join(a.name for a in track.artists)
-    tag.album_artist = track.album.artists[0].name
-    tag.album = track.album.title
-    tag.title = track.title
-    tag.track_num = track.number
-    tag.disc_num = track.disc_number
+    tag.artist = chr(0).join(a.name for a in track.artists if a.name)
+    tag.album_artist = album.artists[0].name
+    tag.album = full_title(album)
+    tag.title = full_title(track)
+    if position := album.track_position:
+        tag.track_num = position.index
+        tag.disc_num = position.volume
     tag.release_date = tag.original_release_date = release_date
     tag.encoded_by = ENCODED_BY
-    tag.audio_file_url = f"https://{domain}/album/{track.album.id}/track/{track.id}"
+    tag.audio_file_url = f"https://music.yandex.ru/album/{album.id}/track/{track.id}"
 
     if lyrics is not None:
         tag.lyrics.set(lyrics)
@@ -84,56 +90,46 @@ def set_id3_tags(
     tag.save()
 
 
-def setup_networking(enable_ipv6: bool):
-    requests.packages.urllib3.util.connection.HAS_IPV6 = enable_ipv6  # type: ignore
-
-
-def setup_session(
-    session: Session, cookie_jar: CookieJar, user_agent: str, domain: str
-) -> Session:
-    session.cookies = cookie_jar  # type: ignore
-    session.headers["User-Agent"] = user_agent
-    session.headers["X-Retpath-Y"] = urllib.parse.quote_plus(f"https://{domain}")
-    return session
-
-
 def download_track(
-    client: YandexMusicApi,
-    track: BasicTrackInfo,
+    track: Track,
     target_path: Path,
-    covers_cache: dict[str, bytes],
     cover_resolution: int = DEFAULT_COVER_RESOLUTION,
-    hq: bool = False,
+    quality: int = 0,
     add_lyrics: bool = False,
     embed_cover: bool = False,
+    covers_cache: Optional[dict[int, bytes]] = None,
 ):
-    album = track.album
+    if embed_cover and covers_cache is None:
+        raise RuntimeError("covers_cache isn't provided")
+    covers_cache = typing.cast(dict[int, bytes], covers_cache)
+    album = track.albums[0]
 
-    url = client.get_track_download_url(track, hq)
-    http_utils.download_file(client.session, url, target_path)
+    download_info = track.get_download_info()
+    download_info = [e for e in download_info if e.codec == "mp3"]
+    download_info.sort(key=lambda e: e.bitrate_in_kbps)
+    target_info = download_info[-1] if quality == 1 else download_info[0]
+    track.download(str(target_path), bitrate_in_kbps=target_info.bitrate_in_kbps)
 
     lyrics = None
-    if add_lyrics and track.has_lyrics:
-        if isinstance(track, FullTrackInfo):
-            lyrics = track.lyrics
-        else:
-            full_track = client.get_full_track_info(track.id)
-            if full_track is not None:
-                lyrics = full_track.lyrics
+    if add_lyrics and (lyrics_info := track.lyrics_info):
+        if lyrics_info.has_available_text_lyrics:
+            if track_lyrics := track.get_lyrics(format="TEXT"):
+                lyrics = track_lyrics.fetch_lyrics()
 
     cover = None
-    cover_url = track.cover_info.cover_url(cover_resolution)
-    if cover_url is not None:
+    if track.cover_uri is not None:
+        cover_size = f"{cover_resolution}x{cover_resolution}"
         if embed_cover:
-            if cached_cover := covers_cache.get(album.id):
+            album_id = album.id
+            if album_id and (cached_cover := covers_cache.get(album_id)):
                 cover = cached_cover
             else:
-                cover = covers_cache[album.id] = http_utils.download_bytes(
-                    client.session, cover_url
-                )
+                cover_bytes = track.download_cover_bytes(size=cover_size)
+                if album_id:
+                    cover = covers_cache[album_id] = cover_bytes
         else:
             cover_path = target_path.parent / "cover.jpg"
             if not cover_path.is_file():
-                http_utils.download_file(client.session, cover_url, cover_path)
+                track.download_cover(str(cover_path), cover_size)
 
-    set_id3_tags(target_path, track, lyrics, cover, client.domain)
+    set_id3_tags(target_path, track, lyrics, cover)

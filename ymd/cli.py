@@ -1,39 +1,20 @@
 #!/bin/python3
 import argparse
-import datetime as dt
+import itertools
 import logging
 import re
-import sys
-import tempfile
 import time
+import typing
+from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import Optional
 from urllib.parse import urlparse
 
-import browser_cookie3
-from browser_cookie3 import BrowserCookieError
-from requests import Session
+from yandex_music import Album, Client, Playlist, Track
 
 from ymd import core
-from ymd.ym_api import BasicTrackInfo, PlaylistId, YandexMusicApi, api
 
-DEFAULT_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36"
-DEFAULT_DELAY = 3
-DEFAULT_DOMAIN = "music.yandex.ru"
-SUPPORTED_BROWSERS = [
-    "chrome",
-    "opera",
-    "opera_gx",
-    "firefox",
-    "edge",
-    "safari",
-    "chromium",
-    "vivaldi",
-    "librewolf",
-]
-
-CACHE_EXPIRE_AFTER = dt.timedelta(hours=8)
-CACHE_DIR = Path(tempfile.gettempdir()) / "ymd"
+DEFAULT_DELAY = 0
 
 TRACK_RE = re.compile(r"track/(\d+)")
 ALBUM_RE = re.compile(r"album/(\d+)$")
@@ -41,11 +22,6 @@ ARTIST_RE = re.compile(r"artist/(\d+)$")
 PLAYLIST_RE = re.compile(r"([\w\-._]+)/playlists/(\d+)$")
 
 logger = logging.getLogger("yandex-music-downloader")
-
-
-def args_playlist_id(arg: str) -> api.PlaylistId:
-    arr = arg.split("/")
-    return PlaylistId(owner=arr[0], kind=int(arr[1]))
 
 
 def show_default(text: Optional[str] = None) -> str:
@@ -57,12 +33,17 @@ def show_default(text: Optional[str] = None) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Загрузчик музыки с сервиса Яндекс.Музыка"
+        description="Загрузчик музыки с сервиса Яндекс.Музыка",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
 
     common_group = parser.add_argument_group("Общие параметры")
     common_group.add_argument(
-        "--hq", action="store_true", help="Загружать треки в высоком качестве"
+        "--quality",
+        metavar="<Качество>",
+        default=0,
+        type=int,
+        help="Качество трека:\n0 - Низкое (mp3 128kbps)\n1 - Высокое (mp3 320kbps)\n(по умолчанию: %(default)s)",
     )
     common_group.add_argument(
         "--skip-existing", action="store_true", help="Пропускать уже загруженные треки"
@@ -98,11 +79,6 @@ def main():
         help="Загружать только музыкальные альбомы"
         " (пропускать подкасты и аудиокниги)",
     )
-    common_group.add_argument(
-        "--disable-ipv6",
-        action="store_true",
-        help="Отключить IPv6. Используйте при проблемах с подключением",
-    )
     common_group.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
 
     id_group_meta = parser.add_argument_group("ID")
@@ -112,7 +88,6 @@ def main():
     id_group.add_argument("--track-id", metavar="<ID трека>")
     id_group.add_argument(
         "--playlist-id",
-        type=args_playlist_id,
         metavar="<владелец плейлиста>/<тип плейлиста>",
     )
     id_group.add_argument("-u", "--url", help="URL исполнителя/альбома/трека/плейлиста")
@@ -138,29 +113,16 @@ def main():
         help=show_default(
             "Поддерживает следующие заполнители:"
             " #number, #artist, #album-artist, #title,"
-            " #album, #year, #artist-id, #album-id, #track-id, #track-number"
+            " #album, #year, #artist-id, #album-id, #track-id, #number-padded"
         ),
     )
 
     auth_group = parser.add_argument_group("Авторизация")
     auth_group.add_argument(
-        "--browser",
+        "--token",
         required=True,
-        help=(
-            "Браузер из которого будут извлечены данные для авторизации."
-            " Укажите браузер через который вы входили в Яндекс Музыку."
-            f" Допустимые значения: {', '.join(SUPPORTED_BROWSERS)}"
-        ),
-    )
-    auth_group.add_argument(
-        "--cookies-path",
-        help="Путь к файлу с cookies. Используйте если возникает ошибка получения cookies",
-    )
-    auth_group.add_argument(
-        "--user-agent",
-        default=DEFAULT_USER_AGENT,
-        metavar="<User-Agent>",
-        help=show_default(),
+        metavar="<Токен>",
+        help="Токен для авторизации. См. README для способов получения",
     )
 
     args = parser.parse_args()
@@ -171,30 +133,6 @@ def main():
         level=logging.DEBUG if args.debug else logging.ERROR,
     )
 
-    def response_hook(resp, **kwargs):
-        del kwargs
-        if logger.isEnabledFor(logging.DEBUG):
-            target_headers = ["application/json", "text/xml"]
-            if any(h in resp.headers["Content-Type"] for h in target_headers):
-                logger.debug(resp.text)
-        if not resp.ok:
-            print(f"Код ошибки: {resp.status_code}")
-            if resp.status_code == 400:
-                print(
-                    "Информация по устранению данной ошибки: https://github.com/llistochek/yandex-music-downloader#%D0%BE%D1%88%D0%B8%D0%B1%D0%BA%D0%B0-400"
-                )
-            sys.exit(3)
-        time.sleep(args.delay)
-
-    try:
-        cookies = getattr(browser_cookie3, args.browser)(cookie_file=args.cookies_path)
-    except BrowserCookieError:
-        print(f"Не удалось получить cookies для браузера {args.browser}")
-        return 1
-
-    result_tracks: list[BasicTrackInfo] = []
-
-    domain = DEFAULT_DOMAIN
     if args.url is not None:
         parsed_url = urlparse(args.url)
         path = parsed_url.path
@@ -205,65 +143,77 @@ def main():
         elif match := TRACK_RE.search(path):
             args.track_id = match.group(1)
         elif match := PLAYLIST_RE.search(path):
-            args.playlist_id = PlaylistId(
-                owner=match.group(1), kind=int(match.group(2))
-            )
+            args.playlist_id = match.group(1) + "/" + match.group(2)
         else:
             print("Параметер url указан в неверном формате")
             return 1
-        domain = parsed_url.hostname
 
-    session = Session()
-    core.setup_networking(enable_ipv6=not args.disable_ipv6)
-    core.setup_session(session, cookies, DEFAULT_USER_AGENT, domain)
-    session.hooks = {"response": response_hook}
-    client = YandexMusicApi(session, domain)
+    client = Client(args.token).init()
+    result_tracks: Iterable[Track] = []
+
+    def album_tracks_gen(album_ids: Iterable[int | str]) -> Generator[Track]:
+        for album_id in album_ids:
+            if full_album := client.albums_with_tracks(album_id):
+                if volumes := full_album.volumes:
+                    yield from itertools.chain.from_iterable(volumes)
 
     if args.artist_id is not None:
-        artist_info = client.get_artist_info(args.artist_id)
-        albums_count = 0
-        for album in artist_info.albums:
-            if args.stick_to_artist and album.artists[0].name != artist_info.name:
-                print(
-                    f'Альбом "{album.title}" пропущен' " из-за флага --stick-to-artist"
-                )
-                continue
-            if args.only_music and album.meta_type != "music":
-                print(
-                    f'Альбом "{album.title}" пропущен' " т.к. не является музыкальным"
-                )
-                continue
-            full_album = client.get_full_album_info(album.id)
-            result_tracks.extend(full_album.tracks)
-            albums_count += 1
-        print(artist_info.name)
-        print(f"Альбомов: {albums_count}")
+
+        def filter_album(album: Album) -> bool:
+            title = album.title
+            if album.id is None or not album.available:
+                print(f'Альбом "{title}" не доступен для скачивания')
+            elif args.only_music and album.meta_type != "music":
+                print(f'Альбом "{title}" пропущен' " т.к. не является музыкальным")
+            elif args.stick_to_artist and album.artists[0].id != int(args.artist_id):
+                print(f'Альбом "{title}" пропущен' " из-за флага --stick-to-artist")
+            else:
+                return True
+            return False
+
+        def albums_gen() -> Generator[Album]:
+            has_next = True
+            page = 0
+            while has_next:
+                if albums := client.artists_direct_albums(args.artist_id, page):
+                    yield from albums.albums
+                else:
+                    break
+                if pager := albums.pager:
+                    page = pager.page + 1
+                    has_next = pager.per_page * page < pager.total
+                else:
+                    break
+
+        result_tracks = album_tracks_gen(
+            a.id for a in albums_gen() if filter_album(a) and a.id is not None
+        )
     elif args.album_id is not None:
-        album = client.get_full_album_info(args.album_id)
-        print(album.title)
-        result_tracks = album.tracks
+        result_tracks = album_tracks_gen((args.album_id,))
     elif args.track_id is not None:
-        track = client.get_full_track_info(args.track_id)
-        if track is not None:
-            result_tracks = [track]
-        else:
-            logger.info("Трек не доступен для скачивания")
-            return 1
+        track = client.tracks(args.track_id)
+        result_tracks = track
     elif args.playlist_id is not None:
-        result_tracks = client.get_playlist(args.playlist_id)
+        user, kind = args.playlist_id.split("/")
+        playlist = typing.cast(Playlist, client.users_playlists(kind, user))
 
-    print(f"Треков: {len(result_tracks)}")
+        def playlist_tracks_gen() -> Generator[Track]:
+            tracks = playlist.fetch_tracks()
+            for track in tracks:
+                yield track.fetch_track()
 
-    covers_cache: dict[str, bytes] = {}
-    track_number = 0
-    track_number_pad = len(str(len(result_tracks)))
+        result_tracks = playlist_tracks_gen()
+
+    covers_cache: dict[int, bytes] = {}
     for track in result_tracks:
-        track_number += 1
+        if not track.available:
+            print(f"Трек {track.title} не доступен для скачивания")
+            continue
+
         save_path = args.dir / core.prepare_track_path(
             args.path_pattern,
             track,
             args.unsafe_path,
-            str(track_number).zfill(track_number_pad),
         )
         if args.skip_existing and save_path.is_file():
             continue
@@ -274,12 +224,13 @@ def main():
 
         print(f"Загружается {save_path}")
         core.download_track(
-            client=client,
             track=track,
             target_path=save_path,
-            hq=args.hq,
+            quality=args.quality,
             add_lyrics=args.add_lyrics,
             embed_cover=args.embed_cover,
             cover_resolution=args.cover_resolution,
             covers_cache=covers_cache,
         )
+        if args.delay > 0:
+            time.sleep(args.delay)
