@@ -27,7 +27,8 @@ from yandex_music import Client, DownloadInfo, Track, YandexMusicObject
 
 from ymd.api import get_lossless_info
 
-FILENAME_CLEAR_RE = re.compile(r"[^\w\-\'() ]+")
+UNSAFE_PATH_CLEAR_RE = re.compile(r"[/\\]+")
+SAFE_PATH_CLEAR_RE = re.compile(r"[^\w\-\'() ]+")
 
 DEFAULT_PATH_PATTERN = Path("#album-artist", "#album", "#number - #title")
 DEFAULT_COVER_RESOLUTION = 400
@@ -82,7 +83,10 @@ def prepare_base_path(
     for placeholder, replacement in repl_dict.items():
         replacement = str(replacement)
         if not unsafe_path:
-            replacement = FILENAME_CLEAR_RE.sub("_", replacement)
+            clear_re = SAFE_PATH_CLEAR_RE
+        else:
+            clear_re = UNSAFE_PATH_CLEAR_RE
+        replacement = clear_re.sub("_", replacement)
         path_str = path_str.replace(placeholder, replacement)
     return Path(path_str)
 
