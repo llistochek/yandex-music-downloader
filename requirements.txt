@@ -1,2 +1,2 @@
 yandex-music
-eyed3
+mutagen

@@ -1,18 +1,52 @@
+import datetime as dt
+import random
 import re
 import typing
-from datetime import datetime as dt
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Union
 
-import eyed3
-from eyed3.id3.frames import ImageFrame
-from yandex_music import Track, YandexMusicObject
+import mutagen
+from mutagen.flac import FLAC, Picture
+from mutagen.id3._frames import (
+    APIC,
+    TALB,
+    TDRC,
+    TIT2,
+    TPE1,
+    TPE2,
+    TPOS,
+    TRCK,
+    USLT,
+    WOAF,
+)
+from mutagen.id3._specs import ID3TimeStamp, PictureType
+from mutagen.mp3 import MP3
+from mutagen.mp4 import MP4, MP4Cover
+from yandex_music import Client, DownloadInfo, Track, YandexMusicObject
 
-ENCODED_BY = "https://github.com/llistochek/yandex-music-downloader"
+from ymd.api import get_lossless_info
+
 FILENAME_CLEAR_RE = re.compile(r"[^\w\-\'() ]+")
 
 DEFAULT_PATH_PATTERN = Path("#album-artist", "#album", "#number - #title")
 DEFAULT_COVER_RESOLUTION = 400
+
+MIN_COMPATIBILITY_LEVEL = 0
+MAX_COMPATIBILITY_LEVEL = 1
+
+
+@dataclass
+class DownloadableTrack:
+    url: str
+    bitrate: int
+    codec: str
+    path: Path
+    track: Track
+
+
+def init_client(token: str) -> Client:
+    return Client(token).init()
 
 
 def full_title(obj: YandexMusicObject) -> Optional[str]:
@@ -24,7 +58,7 @@ def full_title(obj: YandexMusicObject) -> Optional[str]:
     return result
 
 
-def prepare_track_path(
+def prepare_base_path(
     path_pattern: Path, track: Track, unsafe_path: bool = False
 ) -> Path:
     path_str = str(path_pattern)
@@ -50,65 +84,131 @@ def prepare_track_path(
         if not unsafe_path:
             replacement = FILENAME_CLEAR_RE.sub("_", replacement)
         path_str = path_str.replace(placeholder, replacement)
-    path_str += ".mp3"
     return Path(path_str)
 
 
-def set_id3_tags(
+def set_tags(
     path: Path,
     track: Track,
     lyrics: Optional[str],
     album_cover: Optional[bytes],
+    compatibility_level: int,
 ) -> None:
     album = track.albums[0]
-    if album.release_date is not None:
-        datetime = dt.fromisoformat(album.release_date)
-        release_date = eyed3.core.Date(*datetime.timetuple()[:6])
-    else:
-        release_date = album.year
-    audiofile = eyed3.load(path)
-    assert audiofile
-
-    tag = audiofile.initTag()
-
-    tag.artist = chr(0).join(a.name for a in track.artists if a.name)
-    tag.album_artist = album.artists[0].name
-    tag.album = full_title(album)
-    tag.title = full_title(track)
+    track_artists = [a.name for a in track.artists if a.name]
+    album_artists = [a.name for a in album.artists if a.name]
+    tag = mutagen.File(path, [MP3, MP4, FLAC])  # type: ignore
+    album_title = full_title(album)
+    track_title = full_title(track)
+    track_number = None
+    disc_number = None
     if position := album.track_position:
-        tag.track_num = position.index
-        tag.disc_num = position.volume
-    tag.release_date = tag.original_release_date = release_date
-    tag.encoded_by = ENCODED_BY
-    tag.audio_file_url = f"https://music.yandex.ru/album/{album.id}/track/{track.id}"
+        track_number = position.index
+        disc_number = position.volume
+    iso8601_release_date = None
+    if album.release_date is not None:
+        iso8601_release_date = dt.datetime.fromisoformat(album.release_date).astimezone(
+            dt.timezone.utc
+        )
+        iso8601_release_date = iso8601_release_date.strftime("%Y-%m-%d %H:%M:%S")
+    release_year = None
+    if year := album.year:
+        release_year = str(year)
+    track_url = f"https://music.yandex.ru/album/{album.id}/track/{track.id}"
 
-    if lyrics is not None:
-        tag.lyrics.set(lyrics)
-    if album_cover is not None:
-        tag.images.set(ImageFrame.FRONT_COVER, album_cover, "image/jpeg")
+    if isinstance(tag, MP3):
+        tag["TIT2"] = TIT2(encoding=3, text=track_title)
+        tag["TALB"] = TALB(encoding=3, text=album_title)
+        tag["TPE1"] = TPE1(encoding=3, text=track_artists)
+        tag["TPE2"] = TPE2(encoding=3, text=album_artists)
+
+        if tdrc_text := iso8601_release_date or release_year:
+            tag["TDRC"] = TDRC(encoding=3, text=[ID3TimeStamp(tdrc_text)])
+        if track_number:
+            tag["TRCK"] = TRCK(encoding=3, text=str(track_number))
+        if disc_number:
+            tag["TPOS"] = TPOS(encoding=3, text=str(disc_number))
+
+        if lyrics:
+            tag["USLT"] = USLT(encoding=3, text=lyrics)
+        if album_cover:
+            tag["APIC"] = APIC(encoding=3, mime="image/jpeg", type=3, data=album_cover)
+
+        tag["WOAF"] = WOAF(
+            encoding=3,
+            text=track_url,
+        )
+    elif isinstance(tag, MP4):
+        tag["\xa9nam"] = track_title
+        tag["\xa9alb"] = album_title
+        artists_value = track_artists
+        album_artists_value = album_artists
+        if compatibility_level == 1:
+            artists_value = "; ".join(track_artists)
+            album_artists_value = "; ".join(album_artists)
+        tag["\xa9ART"] = artists_value
+        tag["aART"] = album_artists_value
+
+        if iso8601_release_date is not None:
+            tag["rldt"] = iso8601_release_date
+        elif release_year is not None:
+            tag["\xa9day"] = release_year
+        if track_number:
+            tag["trkn"] = [(track_number, 0)]
+        if disc_number:
+            tag["disk"] = [(disc_number, 0)]
+
+        if lyrics:
+            tag["\xa9lyr"] = lyrics
+        if album_cover:
+            tag["covr"] = [MP4Cover(album_cover, imageformat=MP4Cover.FORMAT_JPEG)]
+        tag["\xa9cmt"] = track_url
+    elif isinstance(tag, FLAC):
+        tag["title"] = track_title
+        tag["album"] = album_title
+        tag["artist"] = track_artists
+        tag["albumartist"] = album_artists
+
+        if date_text := iso8601_release_date or release_year:
+            tag["date"] = date_text
+        if track_number:
+            tag["tracknumber"] = str(track_number)
+        if disc_number:
+            tag["discnumber"] = str(disc_number)
+
+        if lyrics:
+            tag["lyrics"] = lyrics
+        if album_cover is not None:
+            pic = Picture()
+            pic.type = PictureType.COVER_FRONT
+            pic.data = album_cover
+            pic.mime = "image/jpeg"
+            tag.add_picture(pic)
+        tag["comment"] = track_url
+    else:
+        raise RuntimeError("Unknown file format")
 
     tag.save()
 
 
 def download_track(
-    track: Track,
-    target_path: Path,
+    track_info: DownloadableTrack,
     cover_resolution: int = DEFAULT_COVER_RESOLUTION,
-    quality: int = 0,
     add_lyrics: bool = False,
     embed_cover: bool = False,
     covers_cache: Optional[dict[int, bytes]] = None,
+    compatibility_level: int = 1,
 ):
     if embed_cover and covers_cache is None:
         raise RuntimeError("covers_cache isn't provided")
     covers_cache = typing.cast(dict[int, bytes], covers_cache)
+    target_path = track_info.path
+    track = track_info.track
+    client = track.client
+    assert client
     album = track.albums[0]
 
-    download_info = track.get_download_info()
-    download_info = [e for e in download_info if e.codec == "mp3"]
-    download_info.sort(key=lambda e: e.bitrate_in_kbps)
-    target_info = download_info[-1] if quality == 1 else download_info[0]
-    track.download(str(target_path), bitrate_in_kbps=target_info.bitrate_in_kbps)
+    client.request.download(track_info.url, str(target_path))
 
     lyrics = None
     if add_lyrics and (lyrics_info := track.lyrics_info):
@@ -132,4 +232,56 @@ def download_track(
             if not cover_path.is_file():
                 track.download_cover(str(cover_path), cover_size)
 
-    set_id3_tags(target_path, track, lyrics, cover)
+    set_tags(target_path, track, lyrics, cover, compatibility_level)
+
+
+def to_downloadable_track(
+    track: Track, quality: int, base_path: Path
+) -> DownloadableTrack:
+    url: str
+    codec: str
+    bitrate: int
+    codec: str
+    if quality == 2:
+        download_info = get_lossless_info(track)
+        codec = download_info.codec
+        url = random.choice(download_info.urls)
+        bitrate = download_info.bitrate
+    else:
+        download_info = track.get_download_info(get_direct_links=True)
+        download_info = [e for e in download_info if e.codec in ("mp3", "aac")]
+
+        def sort_key(e: DownloadInfo) -> int | float:
+            aac_multiplier = 1.5
+            bitrate = e.bitrate_in_kbps
+            if bitrate <= 192:
+                aac_multiplier = 0.5
+            if e.codec == "aac":
+                bitrate *= aac_multiplier
+            return bitrate
+
+        download_info.sort(
+            key=sort_key,
+            reverse=quality == 0,
+        )
+        target_info = download_info[-1]
+        url = typing.cast(str, target_info.direct_link)
+        bitrate = target_info.bitrate_in_kbps
+        codec = target_info.codec
+
+    if codec == "mp3":
+        suffix = ".mp3"
+    elif codec == "aac" or codec == "he-aac":
+        suffix = ".m4a"
+    elif codec == "flac":
+        suffix = ".flac"
+    else:
+        raise RuntimeError("Unknown codec")
+    target_path = base_path.with_suffix(suffix)
+    return DownloadableTrack(
+        url=url,
+        track=track,
+        bitrate=bitrate,
+        codec=codec,
+        path=target_path,
+    )

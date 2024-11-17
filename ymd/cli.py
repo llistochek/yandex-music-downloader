@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional, Union
 from urllib.parse import urlparse
 
-from yandex_music import Album, Client, Playlist, Track
+from yandex_music import Album, Playlist, Track
 
 from ymd import core
 
@@ -31,6 +31,24 @@ def show_default(text: Optional[str] = None) -> str:
     return f"{text} ({default})"
 
 
+def quality_arg(astr: str) -> int:
+    aint = int(astr)
+    if 0 <= aint <= 2:
+        return aint
+    raise argparse.ArgumentTypeError("Значение должно быть в промежутке от 0 до 2")
+
+
+def compatibility_level_arg(astr: str) -> int:
+    aint = int(astr)
+    min_val = core.MIN_COMPATIBILITY_LEVEL
+    max_val = core.MAX_COMPATIBILITY_LEVEL
+    if min_val <= aint <= max_val:
+        return aint
+    raise argparse.ArgumentTypeError(
+        f"Значение должен быть в промежутке от {min_val} до {max_val}"
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Загрузчик музыки с сервиса Яндекс.Музыка",
@@ -42,8 +60,8 @@ def main():
         "--quality",
         metavar="<Качество>",
         default=0,
-        type=int,
-        help="Качество трека:\n0 - Низкое (mp3 128kbps)\n1 - Высокое (mp3 320kbps)\n(по умолчанию: %(default)s)",
+        type=quality_arg,
+        help="Качество трека:\n0 - Низкое (AAC 64kbps)\n1 - Высокое (MP3 320kbps)\n2 - Лучшее (FLAC)\n(по умолчанию: %(default)s)",
     )
     common_group.add_argument(
         "--skip-existing", action="store_true", help="Пропускать уже загруженные треки"
@@ -52,7 +70,7 @@ def main():
         "--add-lyrics", action="store_true", help="Загружать тексты песен"
     )
     common_group.add_argument(
-        "--embed-cover", action="store_true", help="Встраивать обложку в .mp3 файл"
+        "--embed-cover", action="store_true", help="Встраивать обложку в аудиофайл"
     )
     common_group.add_argument(
         "--cover-resolution",
@@ -78,6 +96,15 @@ def main():
         action="store_true",
         help="Загружать только музыкальные альбомы"
         " (пропускать подкасты и аудиокниги)",
+    )
+    common_group.add_argument(
+        "--compatibility-level",
+        metavar="<Уровень совместимости>",
+        default=1,
+        type=compatibility_level_arg,
+        help=show_default(
+            f"Уровень совместимости, от {core.MIN_COMPATIBILITY_LEVEL} до {core.MAX_COMPATIBILITY_LEVEL}. См. README для подробного описания"
+        ),
     )
     common_group.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
 
@@ -148,7 +175,7 @@ def main():
             print("Параметер url указан в неверном формате")
             return 1
 
-    client = Client(args.token).init()
+    client = core.init_client(args.token)
     result_tracks: Iterable[Track] = []
 
     def album_tracks_gen(album_ids: Iterable[Union[int, str]]) -> Generator[Track]:
@@ -210,7 +237,7 @@ def main():
             print(f"Трек {track.title} не доступен для скачивания")
             continue
 
-        save_path = args.dir / core.prepare_track_path(
+        save_path = args.dir / core.prepare_base_path(
             args.path_pattern,
             track,
             args.unsafe_path,
@@ -222,15 +249,20 @@ def main():
         if not save_dir.is_dir():
             save_dir.mkdir(parents=True)
 
-        print(f"Загружается {save_path}")
+        downloadable = core.to_downloadable_track(track, args.quality, save_path)
+        bitrate = downloadable.bitrate
+        format_info = "[" + downloadable.codec.upper()
+        if bitrate > 0:
+            format_info += f" {bitrate}kbps"
+        format_info += "]"
+        print(f"{format_info} Загружается {downloadable.path}")
         core.download_track(
-            track=track,
-            target_path=save_path,
-            quality=args.quality,
+            track_info=downloadable,
             add_lyrics=args.add_lyrics,
             embed_cover=args.embed_cover,
             cover_resolution=args.cover_resolution,
             covers_cache=covers_cache,
+            compatibility_level=args.compatibility_level,
         )
         if args.delay > 0:
             time.sleep(args.delay)
