@@ -49,6 +49,12 @@ def compatibility_level_arg(astr: str) -> int:
     )
 
 
+def cover_resolution_arg(astr: str) -> int:
+    if astr == "original":
+        return -1
+    return int(astr)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Загрузчик музыки с сервиса Яндекс.Музыка",
@@ -76,8 +82,10 @@ def main():
         "--cover-resolution",
         default=core.DEFAULT_COVER_RESOLUTION,
         metavar="<Разрешение обложки>",
-        type=int,
-        help=show_default(None),
+        type=cover_resolution_arg,
+        help=show_default(
+            'Разрешение обложки (в пикселях). Передайте "original" для загрузки в оригинальном (наилучшем) разрешении'
+        ),
     )
     common_group.add_argument(
         "--delay",

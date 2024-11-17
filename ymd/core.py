@@ -218,7 +218,10 @@ def download_track(
 
     cover = None
     if track.cover_uri is not None:
-        cover_size = f"{cover_resolution}x{cover_resolution}"
+        if cover_resolution == -1:
+            cover_size = "orig"
+        else:
+            cover_size = f"{cover_resolution}x{cover_resolution}"
         if embed_cover:
             album_id = album.id
             if album_id and (cached_cover := covers_cache.get(album_id)):
