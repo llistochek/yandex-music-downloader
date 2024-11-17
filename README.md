@@ -49,9 +49,9 @@ https://yandex-music.readthedocs.io/en/main/token.html
 ## Примеры использования
 Во всех примерах замените `<Токен>` на ваш токен.
 
-### Скачать все треки [Twenty One Pilots](https://music.yandex.ru/artist/792433) в высоком качестве
+### Скачать все треки [Arctic Monkeys](https://music.yandex.ru/artist/208167) в наилучшем качестве
 ```
-yandex-music-downloader --token "<Токен>" --quality 1 --url "https://music.yandex.ru/artist/792433"
+yandex-music-downloader --token "<Токен>" --quality 2 --url "https://music.yandex.ru/artist/208167"
 ```
 
 ### Скачать альбом [Nevermind](https://music.yandex.ru/album/294912) в высоком качестве, загружая тексты песен
