@@ -258,7 +258,7 @@ def to_downloadable_track(
         download_info = track.get_download_info(get_direct_links=True)
         download_info = [e for e in download_info if e.codec in ("mp3", "aac")]
 
-        def sort_key(e: DownloadInfo) -> int | float:
+        def sort_key(e: DownloadInfo) -> Union[int, float]:
             aac_multiplier = 1.5
             bitrate = e.bitrate_in_kbps
             if bitrate <= 192:
