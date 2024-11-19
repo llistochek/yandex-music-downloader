@@ -250,8 +250,11 @@ def main():
             track,
             args.unsafe_path,
         )
-        if args.skip_existing and save_path.is_file():
-            continue
+        if args.skip_existing:
+            if any(
+                save_path.with_suffix(s).is_file() for s in core.AUDIO_FILE_SUFFIXES
+            ):
+                continue
 
         save_dir = save_path.parent
         if not save_dir.is_dir():

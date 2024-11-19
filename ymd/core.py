@@ -36,6 +36,8 @@ DEFAULT_COVER_RESOLUTION = 400
 MIN_COMPATIBILITY_LEVEL = 0
 MAX_COMPATIBILITY_LEVEL = 1
 
+AUDIO_FILE_SUFFIXES = {".mp3", ".flac", ".m4a"}
+
 
 @dataclass
 class DownloadableTrack:
