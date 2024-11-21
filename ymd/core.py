@@ -112,12 +112,13 @@ def set_tags(
         track_number = position.index
         disc_number = position.volume
     iso8601_release_date = None
+    release_year: Optional[str] = None
     if album.release_date is not None:
         iso8601_release_date = dt.datetime.fromisoformat(album.release_date).astimezone(
             dt.timezone.utc
         )
+        release_year = str(iso8601_release_date.year)
         iso8601_release_date = iso8601_release_date.strftime("%Y-%m-%d %H:%M:%S")
-    release_year = None
     if year := album.year:
         release_year = str(year)
     track_url = f"https://music.yandex.ru/album/{album.id}/track/{track.id}"
@@ -157,7 +158,7 @@ def set_tags(
 
         if iso8601_release_date is not None:
             tag["rldt"] = iso8601_release_date
-        elif release_year is not None:
+        if release_year is not None:
             tag["\xa9day"] = release_year
         if track_number:
             tag["trkn"] = [(track_number, 0)]
