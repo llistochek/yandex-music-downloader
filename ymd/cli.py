@@ -5,6 +5,7 @@ import logging
 import re
 import time
 import typing
+from argparse import ArgumentTypeError
 from collections.abc import Generator, Iterable
 from pathlib import Path
 from typing import Optional, Union
@@ -35,7 +36,7 @@ def quality_arg(astr: str) -> int:
     aint = int(astr)
     if 0 <= aint <= 2:
         return aint
-    raise argparse.ArgumentTypeError("Значение должно быть в промежутке от 0 до 2")
+    raise ArgumentTypeError("Значение должно быть в промежутке от 0 до 2")
 
 
 def compatibility_level_arg(astr: str) -> int:
@@ -44,7 +45,7 @@ def compatibility_level_arg(astr: str) -> int:
     max_val = core.MAX_COMPATIBILITY_LEVEL
     if min_val <= aint <= max_val:
         return aint
-    raise argparse.ArgumentTypeError(
+    raise ArgumentTypeError(
         f"Значение должен быть в промежутке от {min_val} до {max_val}"
     )
 
@@ -53,6 +54,13 @@ def cover_resolution_arg(astr: str) -> int:
     if astr == "original":
         return -1
     return int(astr)
+
+
+def lyrics_format_arg(astr: str) -> core.LyricsFormat:
+    try:
+        return core.LyricsFormat(astr)
+    except ValueError:
+        raise ArgumentTypeError(f"Допустимые значения: {','.join(core.LyricsFormat)}")
 
 
 def main():
@@ -73,7 +81,14 @@ def main():
         "--skip-existing", action="store_true", help="Пропускать уже загруженные треки"
     )
     common_group.add_argument(
-        "--add-lyrics", action="store_true", help="Загружать тексты песен"
+        "--lyrics-format",
+        type=lyrics_format_arg,
+        default=core.LyricsFormat.NONE,
+        help=show_default("Формат текста песни"),
+        choices=core.LyricsFormat,
+    )
+    common_group.add_argument(
+        "--add-lyrics", action="store_true", help=argparse.SUPPRESS
     )
     common_group.add_argument(
         "--embed-cover", action="store_true", help="Встраивать обложку в аудиофайл"
@@ -167,6 +182,12 @@ def main():
         datefmt="%H:%M:%S",
         level=logging.DEBUG if args.debug else logging.ERROR,
     )
+
+    if args.add_lyrics:
+        print(
+            "Аргумент --add-lyrics устарел и будет удален в будущем. Используйте --lyrics-format"
+        )
+        args.lyrics_format = core.LyricsFormat.TEXT
 
     if args.url is not None:
         parsed_url = urlparse(args.url)
@@ -269,7 +290,7 @@ def main():
         print(f"{format_info} Загружается {downloadable.path}")
         core.download_track(
             track_info=downloadable,
-            add_lyrics=args.add_lyrics,
+            lyrics_format=args.lyrics_format,
             embed_cover=args.embed_cover,
             cover_resolution=args.cover_resolution,
             covers_cache=covers_cache,

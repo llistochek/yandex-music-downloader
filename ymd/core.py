@@ -2,9 +2,11 @@ import datetime as dt
 import random
 import re
 import typing
+from collections.abc import Iterable
 from dataclasses import dataclass
+from enum import Enum, StrEnum, auto
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Type, TypeVar, Union
 
 import mutagen
 from mutagen.flac import FLAC, Picture
@@ -37,6 +39,25 @@ MIN_COMPATIBILITY_LEVEL = 0
 MAX_COMPATIBILITY_LEVEL = 1
 
 AUDIO_FILE_SUFFIXES = {".mp3", ".flac", ".m4a"}
+
+
+_E = TypeVar("_E", bound=Enum)
+
+
+class ParameterEnum(StrEnum):
+    @classmethod
+    def available_keys(cls) -> Iterable[str]:
+        return cls.__members__.keys()
+
+    @classmethod
+    def from_str(cls: Type[_E], arg: str) -> _E:
+        return cls[arg.lower()]
+
+
+class LyricsFormat(StrEnum):
+    NONE = auto()
+    TEXT = auto()
+    LRC = auto()
 
 
 @dataclass
@@ -201,7 +222,7 @@ def set_tags(
 def download_track(
     track_info: DownloadableTrack,
     cover_resolution: int = DEFAULT_COVER_RESOLUTION,
-    add_lyrics: bool = False,
+    lyrics_format: LyricsFormat = LyricsFormat.NONE,
     embed_cover: bool = False,
     covers_cache: Optional[dict[int, bytes]] = None,
     compatibility_level: int = 1,
@@ -217,11 +238,18 @@ def download_track(
 
     client.request.download(track_info.url, str(target_path))
 
-    lyrics = None
-    if add_lyrics and (lyrics_info := track.lyrics_info):
-        if lyrics_info.has_available_text_lyrics:
+    text_lyrics = None
+    if lyrics_format != LyricsFormat.NONE and (lyrics_info := track.lyrics_info):
+        if lyrics_format == LyricsFormat.LRC and lyrics_info.has_available_sync_lyrics:
+            if track_lyrics := track.get_lyrics(format="LRC"):
+                lrc_lyrics = track_lyrics.fetch_lyrics()
+                lrc_path = target_path.with_suffix(".lrc")
+                if not lrc_path.is_file():
+                    with open(lrc_path, "w") as f:
+                        f.write(lrc_lyrics)
+        elif lyrics_info.has_available_text_lyrics:
             if track_lyrics := track.get_lyrics(format="TEXT"):
-                lyrics = track_lyrics.fetch_lyrics()
+                text_lyrics = track_lyrics.fetch_lyrics()
 
     cover = None
     if track.cover_uri is not None:
@@ -242,7 +270,7 @@ def download_track(
             if not cover_path.is_file():
                 track.download_cover(str(cover_path), cover_size)
 
-    set_tags(target_path, track, lyrics, cover, compatibility_level)
+    set_tags(target_path, track, text_lyrics, cover, compatibility_level)
 
 
 def to_downloadable_track(

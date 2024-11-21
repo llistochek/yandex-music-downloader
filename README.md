@@ -54,9 +54,9 @@ https://yandex-music.readthedocs.io/en/main/token.html
 yandex-music-downloader --token "<Токен>" --quality 2 --url "https://music.yandex.ru/artist/208167"
 ```
 
-### Скачать альбом [Nevermind](https://music.yandex.ru/album/294912) в высоком качестве, загружая тексты песен
+### Скачать альбом [Nevermind](https://music.yandex.ru/album/294912) в высоком качестве, загружая тексты песен в формате LRC (с временными метками)
 ```
-yandex-music-downloader --token "<Токен>" --quality 1 --add-lyrics --url "https://music.yandex.ru/album/294912"
+yandex-music-downloader --token "<Токен>" --quality 1 --lyrics-format lrc --url "https://music.yandex.ru/album/294912"
 ```
 
 ### Скачать трек [Seven Nation Army](https://music.yandex.ru/album/11644078/track/6705392)
@@ -67,7 +67,8 @@ yandex-music-downloader --token "<Токен>" --url "https://music.yandex.ru/al
 ## Использование
 ```
 usage: yandex-music-downloader [-h] [--quality <Качество>] [--skip-existing]
-                               [--add-lyrics] [--embed-cover]
+                               [--lyrics-format {none,text,lrc}]
+                               [--embed-cover]
                                [--cover-resolution <Разрешение обложки>]
                                [--delay <Задержка>] [--stick-to-artist]
                                [--only-music]
@@ -88,7 +89,8 @@ options:
                         2 - Лучшее (FLAC)
                         (по умолчанию: 0)
   --skip-existing       Пропускать уже загруженные треки
-  --add-lyrics          Загружать тексты песен
+  --lyrics-format {none,text,lrc}
+                        Формат текста песни (по умолчанию: none)
   --embed-cover         Встраивать обложку в аудиофайл
   --cover-resolution <Разрешение обложки>
                         Разрешение обложки (в пикселях). Передайте "original" для загрузки в оригинальном (наилучшем) разрешении (по умолчанию: 400)
