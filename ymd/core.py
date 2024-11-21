@@ -286,11 +286,11 @@ def to_downloadable_track(
         suffix = ".flac"
     else:
         raise RuntimeError("Unknown codec")
-    target_path = base_path.with_suffix(suffix)
+    target_path = str(base_path) + suffix
     return DownloadableTrack(
         url=url,
         track=track,
         bitrate=bitrate,
         codec=codec,
-        path=target_path,
+        path=Path(target_path),
     )
