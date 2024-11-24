@@ -3,6 +3,7 @@ import random
 import re
 import typing
 from dataclasses import dataclass
+from enum import auto
 from pathlib import Path
 from typing import Optional, Union
 
@@ -23,7 +24,7 @@ from mutagen.id3._frames import (
 from mutagen.id3._specs import ID3TimeStamp, PictureType
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Cover
-from strenum import StrEnum
+from strenum import LowercaseStrEnum
 from yandex_music import Client, DownloadInfo, Track, YandexMusicObject
 
 from ymd.api import get_lossless_info
@@ -40,10 +41,10 @@ MAX_COMPATIBILITY_LEVEL = 1
 AUDIO_FILE_SUFFIXES = {".mp3", ".flac", ".m4a"}
 
 
-class LyricsFormat(StrEnum):
-    NONE = "none"
-    TEXT = "text"
-    LRC = "lrc"
+class LyricsFormat(LowercaseStrEnum):
+    NONE = auto()
+    TEXT = auto()
+    LRC = auto()
 
 
 @dataclass
