@@ -2,11 +2,9 @@ import datetime as dt
 import random
 import re
 import typing
-from collections.abc import Iterable
 from dataclasses import dataclass
-from enum import Enum, StrEnum, auto
 from pathlib import Path
-from typing import Optional, Type, TypeVar, Union
+from typing import Optional, Union
 
 import mutagen
 from mutagen.flac import FLAC, Picture
@@ -25,6 +23,7 @@ from mutagen.id3._frames import (
 from mutagen.id3._specs import ID3TimeStamp, PictureType
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Cover
+from strenum import StrEnum
 from yandex_music import Client, DownloadInfo, Track, YandexMusicObject
 
 from ymd.api import get_lossless_info
@@ -41,23 +40,10 @@ MAX_COMPATIBILITY_LEVEL = 1
 AUDIO_FILE_SUFFIXES = {".mp3", ".flac", ".m4a"}
 
 
-_E = TypeVar("_E", bound=Enum)
-
-
-class ParameterEnum(StrEnum):
-    @classmethod
-    def available_keys(cls) -> Iterable[str]:
-        return cls.__members__.keys()
-
-    @classmethod
-    def from_str(cls: Type[_E], arg: str) -> _E:
-        return cls[arg.lower()]
-
-
 class LyricsFormat(StrEnum):
-    NONE = auto()
-    TEXT = auto()
-    LRC = auto()
+    NONE = "none"
+    TEXT = "text"
+    LRC = "lrc"
 
 
 @dataclass
