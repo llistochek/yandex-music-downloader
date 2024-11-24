@@ -273,7 +273,7 @@ def main():
         )
         if args.skip_existing:
             if any(
-                save_path.with_suffix(s).is_file() for s in core.AUDIO_FILE_SUFFIXES
+                Path(str(save_path) + s).is_file() for s in core.AUDIO_FILE_SUFFIXES
             ):
                 continue
 
