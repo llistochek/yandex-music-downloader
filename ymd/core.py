@@ -28,6 +28,7 @@ from strenum import LowercaseStrEnum
 from yandex_music import Client, DownloadInfo, Track, YandexMusicObject
 
 from ymd.api import get_lossless_info
+from ymd.mime_utils import MimeType, guess_mime_type
 
 UNSAFE_PATH_CLEAR_RE = re.compile(r"[/\\]+")
 SAFE_PATH_CLEAR_RE = re.compile(r"[^\w\-\'() ]+")
@@ -54,6 +55,12 @@ class DownloadableTrack:
     codec: str
     path: Path
     track: Track
+
+
+@dataclass
+class AlbumCover:
+    data: bytes
+    mime_type: MimeType
 
 
 def init_client(token: str) -> Client:
@@ -112,7 +119,7 @@ def set_tags(
     path: Path,
     track: Track,
     lyrics: Optional[str],
-    album_cover: Optional[bytes],
+    album_cover: Optional[AlbumCover],
     compatibility_level: int,
 ) -> None:
     album = track.albums[0]
@@ -154,7 +161,12 @@ def set_tags(
         if lyrics:
             tag["USLT"] = USLT(encoding=3, text=lyrics)
         if album_cover:
-            tag["APIC"] = APIC(encoding=3, mime="image/jpeg", type=3, data=album_cover)
+            tag["APIC"] = APIC(
+                encoding=3,
+                mime=album_cover.mime_type.value,
+                type=3,
+                data=album_cover.data,
+            )
 
         tag["WOAF"] = WOAF(
             encoding=3,
@@ -183,7 +195,14 @@ def set_tags(
         if lyrics:
             tag["\xa9lyr"] = lyrics
         if album_cover:
-            tag["covr"] = [MP4Cover(album_cover, imageformat=MP4Cover.FORMAT_JPEG)]
+            mime_mp4_dict = {
+                MimeType.JPEG: MP4Cover.FORMAT_JPEG,
+                MimeType.PNG: MP4Cover.FORMAT_PNG,
+            }
+            mp4_image_format = mime_mp4_dict.get(album_cover.mime_type)
+            if mp4_image_format is None:
+                raise RuntimeError("Unsupported cover type")
+            tag["covr"] = [MP4Cover(album_cover.data, imageformat=mp4_image_format)]
         tag["\xa9cmt"] = track_url
     elif isinstance(tag, FLAC):
         tag["title"] = track_title
@@ -203,8 +222,8 @@ def set_tags(
         if album_cover is not None:
             pic = Picture()
             pic.type = PictureType.COVER_FRONT
-            pic.data = album_cover
-            pic.mime = "image/jpeg"
+            pic.data = album_cover.data
+            pic.mime = album_cover.mime_type.value
             tag.add_picture(pic)
         tag["comment"] = track_url
     else:
@@ -218,12 +237,12 @@ def download_track(
     cover_resolution: int = DEFAULT_COVER_RESOLUTION,
     lyrics_format: LyricsFormat = LyricsFormat.NONE,
     embed_cover: bool = False,
-    covers_cache: Optional[dict[int, bytes]] = None,
+    covers_cache: Optional[dict[int, AlbumCover]] = None,
     compatibility_level: int = 1,
 ):
     if embed_cover and covers_cache is None:
         raise RuntimeError("covers_cache isn't provided")
-    covers_cache = typing.cast(dict[int, bytes], covers_cache)
+    covers_cache = typing.cast(dict[int, AlbumCover], covers_cache)
     target_path = track_info.path
     track = track_info.track
     client = track.client
@@ -251,18 +270,26 @@ def download_track(
             cover_size = "orig"
         else:
             cover_size = f"{cover_resolution}x{cover_resolution}"
+        cover_bytes = track.download_cover_bytes(size=cover_size)
+        mime_type = guess_mime_type(cover_bytes)
+        if mime_type is None:
+            raise RuntimeError("Unknown cover mime type")
+        album_cover = AlbumCover(data=cover_bytes, mime_type=mime_type)
         if embed_cover:
             album_id = album.id
             if album_id and (cached_cover := covers_cache.get(album_id)):
                 cover = cached_cover
             else:
-                cover_bytes = track.download_cover_bytes(size=cover_size)
                 if album_id:
-                    cover = covers_cache[album_id] = cover_bytes
+                    cover = covers_cache[album_id] = album_cover
         else:
-            cover_path = target_path.parent / "cover.jpg"
+            mime_suffix_dict = {MimeType.JPEG: ".jpg", MimeType.PNG: ".png"}
+            file_suffix = mime_suffix_dict.get(album_cover.mime_type)
+            if file_suffix is None:
+                raise RuntimeError("Unknown mime type")
+            cover_path = target_path.parent / ("cover" + file_suffix)
             if not cover_path.is_file():
-                track.download_cover(str(cover_path), cover_size)
+                cover_path.write_bytes(album_cover.data)
 
     set_tags(target_path, track, text_lyrics, cover, compatibility_level)
 
