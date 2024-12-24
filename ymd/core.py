@@ -239,7 +239,7 @@ def download_track(
                 lrc_lyrics = track_lyrics.fetch_lyrics()
                 lrc_path = target_path.with_suffix(".lrc")
                 if not lrc_path.is_file():
-                    with open(lrc_path, "w") as f:
+                    with open(lrc_path, "w", encoding="utf-8") as f:
                         f.write(lrc_lyrics)
         elif lyrics_info.has_available_text_lyrics:
             if track_lyrics := track.get_lyrics(format="TEXT"):
