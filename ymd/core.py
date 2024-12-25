@@ -67,11 +67,14 @@ def init_client(token: str) -> Client:
     return Client(token).init()
 
 
-def full_title(obj: YandexMusicObject) -> Optional[str]:
-    result = obj["title"]
+def full_title(obj: Optional[YandexMusicObject]) -> Optional[str]:
+    if obj is None:
+        return None
+    result = getattr(obj, "title", None)
     if result is None:
-        return
-    if version := obj["version"]:
+        return None
+    version = getattr(obj, "version", None)
+    if version:
         result += f" ({version})"
     return result
 
@@ -101,7 +104,7 @@ def prepare_base_path(
         "#number": track_position.index if track_position else None,
         "#artist": artist.name if artist else None,
         "#title": full_title(track),
-        "#album": full_title(album) if album else None,
+        "#album": full_title(album) if album else "No album",
         "#year": album.year if album else None,
     }
     for placeholder, replacement in repl_dict.items():
@@ -122,28 +125,31 @@ def set_tags(
     album_cover: Optional[AlbumCover],
     compatibility_level: int,
 ) -> None:
-    album = track.albums[0]
+    album = track.albums[0] if track.albums else None
     track_artists = [a.name for a in track.artists if a.name]
-    album_artists = [a.name for a in album.artists if a.name]
+    album_artists = [a.name for a in album.artists if album and album.artists] if album else []
     tag = mutagen.File(path, [MP3, MP4, FLAC])  # type: ignore
-    album_title = full_title(album)
+    album_title = full_title(album) if album else "No album"
     track_title = full_title(track)
     track_number = None
     disc_number = None
-    if position := album.track_position:
+    if album and (position := album.track_position):
         track_number = position.index
         disc_number = position.volume
     iso8601_release_date = None
     release_year: Optional[str] = None
-    if album.release_date is not None:
+    if album and album.release_date is not None:
         iso8601_release_date = dt.datetime.fromisoformat(album.release_date).astimezone(
             dt.timezone.utc
         )
         release_year = str(iso8601_release_date.year)
         iso8601_release_date = iso8601_release_date.strftime("%Y-%m-%d %H:%M:%S")
-    if year := album.year:
+    if album and (year := album.year):
         release_year = str(year)
-    track_url = f"https://music.yandex.ru/album/{album.id}/track/{track.id}"
+    track_url = (
+        f"https://music.yandex.ru/album/{album.id}/track/{track.id}"
+        if album else None
+    )
 
     if isinstance(tag, MP3):
         tag["TIT2"] = TIT2(encoding=3, text=track_title)
@@ -168,10 +174,11 @@ def set_tags(
                 data=album_cover.data,
             )
 
-        tag["WOAF"] = WOAF(
-            encoding=3,
-            text=track_url,
-        )
+        if track_url:
+            tag["WOAF"] = WOAF(
+                encoding=3,
+                text=track_url,
+            )
     elif isinstance(tag, MP4):
         tag["\xa9nam"] = track_title
         tag["\xa9alb"] = album_title
@@ -203,7 +210,8 @@ def set_tags(
             if mp4_image_format is None:
                 raise RuntimeError("Unsupported cover type")
             tag["covr"] = [MP4Cover(album_cover.data, imageformat=mp4_image_format)]
-        tag["\xa9cmt"] = track_url
+        if track_url:
+            tag["\xa9cmt"] = track_url
     elif isinstance(tag, FLAC):
         tag["title"] = track_title
         tag["album"] = album_title
@@ -225,7 +233,8 @@ def set_tags(
             pic.data = album_cover.data
             pic.mime = album_cover.mime_type.value
             tag.add_picture(pic)
-        tag["comment"] = track_url
+        if track_url:
+            tag["comment"] = track_url
     else:
         raise RuntimeError("Unknown file format")
 
@@ -247,7 +256,11 @@ def download_track(
     track = track_info.track
     client = track.client
     assert client
-    album = track.albums[0]
+
+    if not track.albums:
+        print(f"Track {track.id} does not belong to any album. Saving in 'No album' folder.")
+        target_path = target_path.parent / "No album" / target_path.name
+        target_path.parent.mkdir(parents=True, exist_ok=True)
 
     client.request.download(track_info.url, str(target_path))
 
@@ -276,7 +289,7 @@ def download_track(
             raise RuntimeError("Unknown cover mime type")
         album_cover = AlbumCover(data=cover_bytes, mime_type=mime_type)
         if embed_cover:
-            album_id = album.id
+            album_id = track.albums[0].id if track.albums else None
             if album_id and (cached_cover := covers_cache.get(album_id)):
                 cover = cached_cover
             else:
