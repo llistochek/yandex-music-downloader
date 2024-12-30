@@ -31,7 +31,7 @@ from ymd.api import get_lossless_info
 from ymd.mime_utils import MimeType, guess_mime_type
 
 UNSAFE_PATH_CLEAR_RE = re.compile(r"[/\\]+")
-SAFE_PATH_CLEAR_RE = re.compile(r"[^\w\-\'() ]+")
+SAFE_PATH_CLEAR_RE = re.compile(r"([^\w\-\'() ]|^\s+|\s+$)")
 
 DEFAULT_PATH_PATTERN = Path("#album-artist", "#album", "#number - #title")
 DEFAULT_COVER_RESOLUTION = 400
