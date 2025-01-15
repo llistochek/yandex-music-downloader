@@ -50,6 +50,13 @@ def compatibility_level_arg(astr: str) -> int:
     )
 
 
+def natural_int_arg(astr: str) -> int:
+    aint = int(astr)
+    if aint > 0:
+        return aint
+    raise ArgumentTypeError("Значение должен быть > 0")
+
+
 def cover_resolution_arg(astr: str) -> int:
     if astr == "original":
         return -1
@@ -129,6 +136,15 @@ def main():
             f"Уровень совместимости, от {core.MIN_COMPATIBILITY_LEVEL} до {core.MAX_COMPATIBILITY_LEVEL}. См. README для подробного описания"
         ),
     )
+    common_group.add_argument(
+        "--timeout",
+        metavar="<Время ожидания>",
+        default=20,
+        type=natural_int_arg,
+        help=show_default(
+            "Время ожидания ответа от сервера, в секундах. Увеличьте если возникают сетевые ошибки"
+        ),
+    )
     common_group.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
 
     id_group_meta = parser.add_argument_group("ID")
@@ -204,7 +220,7 @@ def main():
             print("Параметер url указан в неверном формате")
             return 1
 
-    client = core.init_client(args.token)
+    client = core.init_client(args.token, args.timeout)
     result_tracks: Iterable[Track] = []
 
     def album_tracks_gen(album_ids: Iterable[Union[int, str]]) -> Generator[Track]:

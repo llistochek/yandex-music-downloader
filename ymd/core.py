@@ -63,8 +63,10 @@ class AlbumCover:
     mime_type: MimeType
 
 
-def init_client(token: str) -> Client:
-    return Client(token).init()
+def init_client(token: str, timeout: int) -> Client:
+    client = Client(token)
+    client.request.set_timeout(timeout)
+    return client.init()
 
 
 def full_title(obj: YandexMusicObject) -> Optional[str]:
