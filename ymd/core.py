@@ -2,6 +2,7 @@ import datetime as dt
 import random
 import re
 import typing
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import auto
 from pathlib import Path
@@ -40,6 +41,7 @@ MIN_COMPATIBILITY_LEVEL = 0
 MAX_COMPATIBILITY_LEVEL = 1
 
 AUDIO_FILE_SUFFIXES = {".mp3", ".flac", ".m4a"}
+TEMPORARY_FILE_NAME_TEMPLATE = ".yandex-music-downloader.{}.tmp"
 
 
 class LyricsFormat(LowercaseStrEnum):
@@ -251,17 +253,14 @@ def download_track(
     assert client
     album = track.albums[0]
 
-    client.request.download(track_info.url, str(target_path))
-
     text_lyrics = None
     if lyrics_format != LyricsFormat.NONE and (lyrics_info := track.lyrics_info):
         if lyrics_format == LyricsFormat.LRC and lyrics_info.has_available_sync_lyrics:
-            if track_lyrics := track.get_lyrics(format="LRC"):
-                lrc_lyrics = track_lyrics.fetch_lyrics()
-                lrc_path = target_path.with_suffix(".lrc")
-                if not lrc_path.is_file():
-                    with open(lrc_path, "w", encoding="utf-8") as f:
-                        f.write(lrc_lyrics)
+            lrc_path = target_path.with_suffix(".lrc")
+            if not lrc_path.is_file() and (
+                track_lyrics := track.get_lyrics(format="LRC")
+            ):
+                download_via_temporary_file(client, track_lyrics.download_url, lrc_path)
         elif lyrics_info.has_available_text_lyrics:
             if track_lyrics := track.get_lyrics(format="TEXT"):
                 text_lyrics = track_lyrics.fetch_lyrics()
@@ -291,9 +290,16 @@ def download_track(
                 raise RuntimeError("Unknown mime type")
             cover_path = target_path.parent / ("cover" + file_suffix)
             if not cover_path.is_file():
-                cover_path.write_bytes(album_cover.data)
+                write_via_temporary_file(album_cover.data, cover_path)
 
-    set_tags(target_path, track, text_lyrics, cover, compatibility_level)
+    download_via_temporary_file(
+        client,
+        track_info.url,
+        target_path,
+        post_download_hook=lambda tmp_path: set_tags(
+            tmp_path, track, text_lyrics, cover, compatibility_level
+        ),
+    )
 
 
 def to_downloadable_track(
@@ -346,3 +352,32 @@ def to_downloadable_track(
         codec=codec,
         path=Path(target_path),
     )
+
+
+def download_via_temporary_file(
+    client: Client,
+    url: str,
+    target_path: Path,
+    post_download_hook: Optional[Callable[[Path], None]] = None,
+) -> Path:
+    data = client.request.retrieve(url)
+    return write_via_temporary_file(data, target_path, post_download_hook)
+
+
+def write_via_temporary_file(
+    data: bytes,
+    target_path: Path,
+    temporary_file_hook: Optional[Callable[[Path], None]] = None,
+) -> Path:
+    temporary_file = target_path.parent / (
+        TEMPORARY_FILE_NAME_TEMPLATE.format(target_path.name)
+    )
+    try:
+        temporary_file.write_bytes(data)
+        if temporary_file_hook is not None:
+            temporary_file_hook(temporary_file)
+    except InterruptedError as e:
+        temporary_file.unlink()
+        raise e
+    temporary_file.rename(target_path)
+    return target_path

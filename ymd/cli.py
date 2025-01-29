@@ -276,7 +276,7 @@ def main():
 
         result_tracks = playlist_tracks_gen()
 
-    covers_cache: dict[int, bytes] = {}
+    covers_cache = {}
     for track in result_tracks:
         if not track.available:
             print(f"Трек {track.title} не доступен для скачивания")
