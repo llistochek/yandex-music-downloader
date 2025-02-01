@@ -258,7 +258,7 @@ def download_track(
         if lyrics_format == LyricsFormat.LRC and lyrics_info.has_available_sync_lyrics:
             lrc_path = target_path.with_suffix(".lrc")
             if not lrc_path.is_file() and (
-                track_lyrics := track.get_lyrics(format="LRC")
+                track_lyrics := track.get_lyrics(format_="LRC")
             ):
                 download_via_temporary_file(client, track_lyrics.download_url, lrc_path)
         elif lyrics_info.has_available_text_lyrics:
