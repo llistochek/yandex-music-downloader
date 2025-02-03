@@ -26,7 +26,12 @@ from mutagen.id3._specs import ID3TimeStamp, PictureType
 from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Cover
 from strenum import LowercaseStrEnum
-from yandex_music import Client, DownloadInfo, Track, YandexMusicObject
+from yandex_music import (
+    Client,
+    DownloadInfo,
+    Track,
+    YandexMusicModel,
+)
 
 from ymd.api import get_lossless_info
 from ymd.mime_utils import MimeType, guess_mime_type
@@ -71,7 +76,7 @@ def init_client(token: str, timeout: int) -> Client:
     return client.init()
 
 
-def full_title(obj: YandexMusicObject) -> Optional[str]:
+def full_title(obj: YandexMusicModel) -> Optional[str]:
     result = obj["title"]
     if result is None:
         return
@@ -249,7 +254,7 @@ def download_track(
     covers_cache = typing.cast(dict[int, AlbumCover], covers_cache)
     target_path = track_info.path
     track = track_info.track
-    client = track.client
+    client = typing.cast(Client, track.client)
     assert client
     album = track.albums[0]
 
@@ -262,7 +267,7 @@ def download_track(
             ):
                 download_via_temporary_file(client, track_lyrics.download_url, lrc_path)
         elif lyrics_info.has_available_text_lyrics:
-            if track_lyrics := track.get_lyrics(format="TEXT"):
+            if track_lyrics := track.get_lyrics(format_="TEXT"):
                 text_lyrics = track_lyrics.fetch_lyrics()
 
     cover = None
