@@ -29,6 +29,7 @@ from yandex_music import (
     Client,
     Track,
     YandexMusicModel,
+    Album,
 )
 
 from ymd import api
@@ -84,10 +85,10 @@ def init_client(token: str, timeout: int) -> Client:
     return client.init()
 
 
-def full_title(obj: YandexMusicModel) -> Optional[str]:
+def full_title(obj: YandexMusicModel) -> str:
     result = obj["title"]
     if result is None:
-        return
+        return ""
     if version := obj["version"]:
         result += f" ({version})"
     return result
@@ -139,7 +140,7 @@ def set_tags(
     album_cover: Optional[AlbumCover],
     compatibility_level: int,
 ) -> None:
-    album = track.albums[0]
+    album = track.albums[0] if track.albums else Album()
     track_artists = [a.name for a in track.artists if a.name]
     album_artists = [a.name for a in album.artists if a.name]
     tag = mutagen.File(path, [MP3, MP4, FLAC])  # type: ignore
@@ -264,7 +265,6 @@ def download_track(
     track = track_info.track
     client = typing.cast(Client, track.client)
     assert client
-    album = track.albums[0]
 
     text_lyrics = None
     if lyrics_format != LyricsFormat.NONE and (lyrics_info := track.lyrics_info):
@@ -291,12 +291,12 @@ def download_track(
             raise RuntimeError("Unknown cover mime type")
         album_cover = AlbumCover(data=cover_bytes, mime_type=mime_type)
         if embed_cover:
-            album_id = album.id
-            if album_id and (cached_cover := covers_cache.get(album_id)):
+            album = track.albums[0] if track.albums else Album()
+            if album.id and (cached_cover := covers_cache.get(album.id)):
                 cover = cached_cover
             else:
-                if album_id:
-                    cover = covers_cache[album_id] = album_cover
+                if album.id:
+                    cover = covers_cache[album.id] = album_cover
         else:
             mime_suffix_dict = {MimeType.JPEG: ".jpg", MimeType.PNG: ".png"}
             file_suffix = mime_suffix_dict.get(album_cover.mime_type)
