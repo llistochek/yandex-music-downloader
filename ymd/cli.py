@@ -82,7 +82,7 @@ def main():
         metavar="<Качество>",
         default=0,
         type=quality_arg,
-        help="Качество трека:\n0 - Низкое (AAC 64kbps)\n1 - Высокое (MP3 320kbps)\n2 - Лучшее (FLAC)\n(по умолчанию: %(default)s)",
+        help="Качество трека:\n0 - Низкое (AAC 64kbps)\n1 - Оптимальное (AAC 192kbps)\n2 - Лучшее (FLAC)\n(по умолчанию: %(default)s)",
     )
     common_group.add_argument(
         "--skip-existing", action="store_true", help="Пропускать уже загруженные треки"
@@ -124,8 +124,7 @@ def main():
     common_group.add_argument(
         "--only-music",
         action="store_true",
-        help="Загружать только музыкальные альбомы"
-        " (пропускать подкасты и аудиокниги)",
+        help="Загружать только музыкальные альбомы (пропускать подкасты и аудиокниги)",
     )
     common_group.add_argument(
         "--compatibility-level",
@@ -236,9 +235,9 @@ def main():
             if album.id is None or not album.available:
                 print(f'Альбом "{title}" не доступен для скачивания')
             elif args.only_music and album.meta_type != "music":
-                print(f'Альбом "{title}" пропущен' " т.к. не является музыкальным")
+                print(f'Альбом "{title}" пропущен т.к. не является музыкальным')
             elif args.stick_to_artist and album.artists[0].id != int(args.artist_id):
-                print(f'Альбом "{title}" пропущен' " из-за флага --stick-to-artist")
+                print(f'Альбом "{title}" пропущен из-за флага --stick-to-artist')
             else:
                 return True
             return False
@@ -298,8 +297,8 @@ def main():
             save_dir.mkdir(parents=True)
 
         downloadable = core.to_downloadable_track(track, args.quality, save_path)
-        bitrate = downloadable.bitrate
-        format_info = "[" + downloadable.codec.upper()
+        bitrate = downloadable.download_info.bitrate
+        format_info = "[" + downloadable.download_info.codec.name
         if bitrate > 0:
             format_info += f" {bitrate}kbps"
         format_info += "]"

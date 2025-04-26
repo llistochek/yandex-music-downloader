@@ -1,10 +1,9 @@
 import datetime as dt
-import random
 import re
 import typing
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import auto
+from enum import IntEnum, auto
 from pathlib import Path
 from typing import Optional, Union
 
@@ -28,12 +27,17 @@ from mutagen.mp4 import MP4, MP4Cover
 from strenum import LowercaseStrEnum
 from yandex_music import (
     Client,
-    DownloadInfo,
     Track,
     YandexMusicModel,
 )
 
-from ymd.api import get_lossless_info
+from ymd import api
+from ymd.api import (
+    ApiTrackQuality,
+    Codec,
+    CustomDownloadInfo,
+    get_download_info,
+)
 from ymd.mime_utils import MimeType, guess_mime_type
 
 UNSAFE_PATH_CLEAR_RE = re.compile(r"[/\\]+")
@@ -49,6 +53,12 @@ AUDIO_FILE_SUFFIXES = {".mp3", ".flac", ".m4a"}
 TEMPORARY_FILE_NAME_TEMPLATE = ".yandex-music-downloader.{}.tmp"
 
 
+class CoreTrackQuality(IntEnum):
+    LOW = 0
+    NORMAL = auto()
+    LOSSLESS = auto()
+
+
 class LyricsFormat(LowercaseStrEnum):
     NONE = auto()
     TEXT = auto()
@@ -57,9 +67,7 @@ class LyricsFormat(LowercaseStrEnum):
 
 @dataclass
 class DownloadableTrack:
-    url: str
-    bitrate: int
-    codec: str
+    download_info: CustomDownloadInfo
     path: Path
     track: Track
 
@@ -265,7 +273,8 @@ def download_track(
             if not lrc_path.is_file() and (
                 track_lyrics := track.get_lyrics(format_="LRC")
             ):
-                download_via_temporary_file(client, track_lyrics.download_url, lrc_path)
+                lyrics = track_lyrics.fetch_lyrics()
+                write_via_temporary_file(lyrics.encode("utf-8"), lrc_path)
         elif lyrics_info.has_available_text_lyrics:
             if track_lyrics := track.get_lyrics(format_="TEXT"):
                 text_lyrics = track_lyrics.fetch_lyrics()
@@ -297,76 +306,47 @@ def download_track(
             if not cover_path.is_file():
                 write_via_temporary_file(album_cover.data, cover_path)
 
-    download_via_temporary_file(
-        client,
-        track_info.url,
+    download_info = track_info.download_info
+    track_data = api.download_track(client, download_info)
+
+    write_via_temporary_file(
+        track_data,
         target_path,
-        post_download_hook=lambda tmp_path: set_tags(
+        temporary_file_hook=lambda tmp_path: set_tags(
             tmp_path, track, text_lyrics, cover, compatibility_level
         ),
     )
 
 
 def to_downloadable_track(
-    track: Track, quality: int, base_path: Path
+    track: Track, quality: CoreTrackQuality, base_path: Path
 ) -> DownloadableTrack:
-    url: str
-    codec: str
-    bitrate: int
-    codec: str
-    if quality == 2:
-        download_info = get_lossless_info(track)
-        codec = download_info.codec
-        url = random.choice(download_info.urls)
-        bitrate = download_info.bitrate
-    else:
-        download_info = track.get_download_info(get_direct_links=True)
-        download_info = [e for e in download_info if e.codec in ("mp3", "aac")]
+    api_quality = ApiTrackQuality.NORMAL
+    if quality == CoreTrackQuality.LOW:
+        api_quality = ApiTrackQuality.LOW
+    elif quality == CoreTrackQuality.NORMAL:
+        api_quality = ApiTrackQuality.NORMAL
+    elif quality == CoreTrackQuality.LOSSLESS:
+        api_quality = ApiTrackQuality.LOSSLESS
 
-        def sort_key(e: DownloadInfo) -> Union[int, float]:
-            aac_multiplier = 1.5
-            bitrate = e.bitrate_in_kbps
-            if bitrate <= 192:
-                aac_multiplier = 0.5
-            if e.codec == "aac":
-                bitrate *= aac_multiplier
-            return bitrate
+    download_info = get_download_info(track, api_quality)
+    codec = download_info.codec
 
-        download_info.sort(
-            key=sort_key,
-            reverse=quality == 0,
-        )
-        target_info = download_info[-1]
-        url = typing.cast(str, target_info.direct_link)
-        bitrate = target_info.bitrate_in_kbps
-        codec = target_info.codec
-
-    if codec == "mp3":
+    if codec == Codec.MP3:
         suffix = ".mp3"
-    elif codec == "aac" or codec == "he-aac":
+    elif codec == Codec.AAC:
         suffix = ".m4a"
-    elif codec == "flac":
+    elif codec == Codec.FLAC:
         suffix = ".flac"
     else:
         raise RuntimeError("Unknown codec")
+
     target_path = str(base_path) + suffix
     return DownloadableTrack(
-        url=url,
+        download_info=download_info,
         track=track,
-        bitrate=bitrate,
-        codec=codec,
         path=Path(target_path),
     )
-
-
-def download_via_temporary_file(
-    client: Client,
-    url: str,
-    target_path: Path,
-    post_download_hook: Optional[Callable[[Path], None]] = None,
-) -> Path:
-    data = client.request.retrieve(url)
-    return write_via_temporary_file(data, target_path, post_download_hook)
 
 
 def write_via_temporary_file(

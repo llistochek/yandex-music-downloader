@@ -7,14 +7,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yandex-music-downloader"
-version = "3.4.3b3"
+version = "3.4.4b0"
 description = "Загрузчик музыки с сервиса Яндекс.Музыка"
 requires-python = ">=3.9"
 readme = "README.md"
 dependencies = [
     "yandex-music @ https://github.com/llistochek/yandex-music-api/archive/9623fbca7704f47766614efe51d66c9fd496714c.zip",
     "mutagen>=1.47.0",
-    "StrEnum"
+    "StrEnum",
+    "pycryptodome"
 ]
 
 [project.scripts]
