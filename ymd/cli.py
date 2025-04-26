@@ -22,6 +22,8 @@ ALBUM_RE = re.compile(r"album/(\d+)$")
 ARTIST_RE = re.compile(r"artist/(\d+)$")
 PLAYLIST_RE = re.compile(r"([\w\-._]+)/playlists/(\d+)$")
 
+FETCH_PAGE_SIZE = 10
+
 logger = logging.getLogger("yandex-music-downloader")
 
 
@@ -270,8 +272,10 @@ def main():
 
         def playlist_tracks_gen() -> Generator[Track]:
             tracks = playlist.fetch_tracks()
-            for track in tracks:
-                yield track.fetch_track()
+            for i in range(0, len(tracks), FETCH_PAGE_SIZE):
+                yield from client.tracks(
+                    [track.id for track in tracks[i : i + FETCH_PAGE_SIZE]]
+                )
 
         result_tracks = playlist_tracks_gen()
 
