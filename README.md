@@ -39,7 +39,7 @@
 ## Установка
 Для запуска скрипта требуется Python 3.9+
 ```
-pip install https://github.com/llistochek/yandex-music-downloader/archive/main.zip
+pip install -U https://github.com/llistochek/yandex-music-downloader/archive/main.zip
 yandex-music-downloader --help
 ```
 
@@ -138,6 +138,7 @@ ID:
 ## Спасибо
 - Разработчикам проекта [yandex-music-api](https://github.com/MarshalX/yandex-music-api)
 - @ArtemBay за [скрипт](https://github.com/MarshalX/yandex-music-api/issues/656#issuecomment-2306542725) получения ссылки на загрузку в lossless качестве
+- @keltecc за [метод дешифрования файлов](https://github.com/llistochek/yandex-music-downloader/issues/112#issuecomment-2812535100)
 
 
 ## Дисклеймер
