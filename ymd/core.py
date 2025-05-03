@@ -66,6 +66,13 @@ class LyricsFormat(LowercaseStrEnum):
     LRC = auto()
 
 
+CONTAINER_MUTAGEN_MAPPING: dict[Container, type[mutagen.FileType]] = {  # type: ignore
+    Container.MP3: MP3,
+    Container.FLAC: FLAC,
+    Container.MP4: MP4,
+}
+
+
 @dataclass
 class DownloadableTrack:
     download_info: CustomDownloadInfo
@@ -136,6 +143,7 @@ def prepare_base_path(
 def set_tags(
     path: Path,
     track: Track,
+    container: Container,
     lyrics: Optional[str],
     album_cover: Optional[AlbumCover],
     compatibility_level: int,
@@ -143,7 +151,11 @@ def set_tags(
     album = track.albums[0] if track.albums else Album()
     track_artists = [a.name for a in track.artists if a.name]
     album_artists = [a.name for a in album.artists if a.name]
-    tag = mutagen.File(path, [MP3, MP4, FLAC])  # type: ignore
+
+    file_type = CONTAINER_MUTAGEN_MAPPING.get(container)
+    if file_type is None:
+        raise ValueError(f"Unknown container: {container}")
+    tag = file_type(path)
     album_title = full_title(album)
     track_title = full_title(track)
     track_number = None
@@ -313,7 +325,12 @@ def download_track(
         track_data,
         target_path,
         temporary_file_hook=lambda tmp_path: set_tags(
-            tmp_path, track, text_lyrics, cover, compatibility_level
+            tmp_path,
+            track,
+            download_info.file_format.container,
+            text_lyrics,
+            cover,
+            compatibility_level,
         ),
     )
 
