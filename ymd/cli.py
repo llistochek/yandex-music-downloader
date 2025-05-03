@@ -302,7 +302,7 @@ def main():
 
         downloadable = core.to_downloadable_track(track, args.quality, save_path)
         bitrate = downloadable.download_info.bitrate
-        format_info = "[" + downloadable.download_info.codec.name
+        format_info = "[" + downloadable.download_info.file_format.codec.name
         if bitrate > 0:
             format_info += f" {bitrate}kbps"
         format_info += "]"

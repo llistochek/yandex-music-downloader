@@ -26,16 +26,16 @@ from mutagen.mp3 import MP3
 from mutagen.mp4 import MP4, MP4Cover
 from strenum import LowercaseStrEnum
 from yandex_music import (
+    Album,
     Client,
     Track,
     YandexMusicModel,
-    Album,
 )
 
 from ymd import api
 from ymd.api import (
     ApiTrackQuality,
-    Codec,
+    Container,
     CustomDownloadInfo,
     get_download_info,
 )
@@ -330,13 +330,13 @@ def to_downloadable_track(
         api_quality = ApiTrackQuality.LOSSLESS
 
     download_info = get_download_info(track, api_quality)
-    codec = download_info.codec
+    container = download_info.file_format.container
 
-    if codec == Codec.MP3:
+    if container == Container.MP3:
         suffix = ".mp3"
-    elif codec == Codec.AAC:
+    elif container == Container.MP4:
         suffix = ".m4a"
-    elif codec == Codec.FLAC:
+    elif container == Container.FLAC:
         suffix = ".flac"
     else:
         raise RuntimeError("Unknown codec")

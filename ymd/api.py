@@ -1,13 +1,11 @@
 import base64
 import hashlib
 import hmac
-import itertools
 import random
 import time
 import typing
-from collections.abc import Iterable
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 
 from Crypto.Cipher import AES
 from strenum import StrEnum
@@ -15,20 +13,33 @@ from yandex_music import Client, Track
 from yandex_music.utils.sign_request import DEFAULT_SIGN_KEY
 
 
+class Container(Enum):
+    FLAC = auto()
+    MP3 = auto()
+    MP4 = auto()
+
+
 class Codec(Enum):
-    FLAC = ["flac", "flac-mp4"]
-    MP3 = ["mp3"]
-    AAC = ["aac", "he-aac", "aac-mp4", "he-aac-mp4"]
+    FLAC = auto()
+    MP3 = auto()
+    AAC = auto()
 
-    @classmethod
-    def get_all_codecs(cls) -> Iterable[str]:
-        return itertools.chain.from_iterable(e.value for e in cls)
 
-    @classmethod
-    def from_codec_str(cls, codec_str: str) -> typing.Optional["Codec"]:
-        for codec in cls:
-            if any(e == codec_str for e in codec.value):
-                return codec
+@dataclass
+class FileFormat:
+    container: Container
+    codec: Codec
+
+
+FILE_FORMAT_MAPPING = {
+    "flac": FileFormat(Container.FLAC, Codec.FLAC),
+    "flac-mp4": FileFormat(Container.MP4, Codec.FLAC),
+    "mp3": FileFormat(Container.MP3, Codec.MP3),
+    "aac": FileFormat(Container.MP4, Codec.AAC),
+    "he-aac": FileFormat(Container.MP4, Codec.AAC),
+    "aac-mp4": FileFormat(Container.MP4, Codec.AAC),
+    "he-aac-mp4": FileFormat(Container.MP4, Codec.AAC),
+}
 
 
 class ApiTrackQuality(StrEnum):
@@ -40,7 +51,7 @@ class ApiTrackQuality(StrEnum):
 @dataclass
 class CustomDownloadInfo:
     quality: str
-    codec: Codec
+    file_format: FileFormat
     urls: list[str]
     decryption_key: str
     bitrate: int
@@ -54,7 +65,7 @@ def get_download_info(track: Track, quality: ApiTrackQuality) -> CustomDownloadI
         "ts": timestamp,
         "trackId": track.id,
         "quality": quality,
-        "codecs": ",".join(Codec.get_all_codecs()),
+        "codecs": ",".join(FILE_FORMAT_MAPPING.keys()),
         "transports": "encraw",
     }
     hmac_sign = hmac.new(
@@ -71,12 +82,12 @@ def get_download_info(track: Track, quality: ApiTrackQuality) -> CustomDownloadI
     resp = typing.cast(dict, resp)
     e = resp["download_info"]
     raw_codec = e["codec"]
-    codec = Codec.from_codec_str(raw_codec)
-    if codec is None:
+    file_format = FILE_FORMAT_MAPPING.get(raw_codec)
+    if file_format is None:
         raise ValueError(f"Unknown codec: {raw_codec}")
     return CustomDownloadInfo(
         quality=e["quality"],
-        codec=codec,
+        file_format=file_format,
         urls=e["urls"],
         bitrate=e["bitrate"],
         decryption_key=e.get("key"),
