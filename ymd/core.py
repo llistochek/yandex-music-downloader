@@ -214,8 +214,8 @@ def set_tags(
         tag["aART"] = album_artists_value
 
         if iso8601_release_date is not None:
-            tag["rldt"] = iso8601_release_date
-        if release_year is not None:
+            tag["\xa9day"] = iso8601_release_date
+        elif release_year is not None:
             tag["\xa9day"] = release_year
         if track_number:
             tag["trkn"] = [(track_number, 0)]
