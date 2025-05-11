@@ -20,7 +20,7 @@ DEFAULT_DELAY = 0
 TRACK_RE = re.compile(r"track/(\d+)")
 ALBUM_RE = re.compile(r"album/(\d+)$")
 ARTIST_RE = re.compile(r"artist/(\d+)$")
-PLAYLIST_RE = re.compile(r"([\w\-._]+)/playlists/(\d+)$")
+PLAYLIST_RE = re.compile(r"([\w\-._@]+)/playlists/(\d+)$")
 
 FETCH_PAGE_SIZE = 10
 
