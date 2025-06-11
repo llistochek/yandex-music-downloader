@@ -12,6 +12,7 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3._frames import (
     APIC,
     TALB,
+    TCON,
     TDRC,
     TIT2,
     TPE1,
@@ -151,7 +152,12 @@ def set_tags(
     album = track.albums[0] if track.albums else Album()
     track_artists = [a.name for a in track.artists if a.name]
     album_artists = [a.name for a in album.artists if a.name]
-
+    genre = None
+    if hasattr(track, 'genre') and track.genre:
+    genre = track.genre
+    elif hasattr(album, 'genre') and album.genre:
+    genre = album.genre
+    
     file_type = CONTAINER_MUTAGEN_MAPPING.get(container)
     if file_type is None:
         raise ValueError(f"Unknown container: {container}")
@@ -187,7 +193,9 @@ def set_tags(
             tag["TRCK"] = TRCK(encoding=3, text=str(track_number))
         if disc_number:
             tag["TPOS"] = TPOS(encoding=3, text=str(disc_number))
-
+        if genre:
+            tag["TCON"] = TCON(encoding=3, text=genre)
+            
         if lyrics:
             tag["USLT"] = USLT(encoding=3, text=lyrics)
         if album_cover:
@@ -221,6 +229,8 @@ def set_tags(
             tag["trkn"] = [(track_number, 0)]
         if disc_number:
             tag["disk"] = [(disc_number, 0)]
+        if genre:
+            tag["\xa9gen"] = genre
 
         if lyrics:
             tag["\xa9lyr"] = lyrics
@@ -246,7 +256,9 @@ def set_tags(
             tag["tracknumber"] = str(track_number)
         if disc_number:
             tag["discnumber"] = str(disc_number)
-
+        if genre:
+            tag["genre"] = genre
+            
         if lyrics:
             tag["lyrics"] = lyrics
         if album_cover is not None:
