@@ -139,6 +139,7 @@ ID:
 - Разработчикам проекта [yandex-music-api](https://github.com/MarshalX/yandex-music-api)
 - @ArtemBay за [скрипт](https://github.com/MarshalX/yandex-music-api/issues/656#issuecomment-2306542725) получения ссылки на загрузку в lossless качестве
 - @keltecc за [метод дешифрования файлов](https://github.com/llistochek/yandex-music-downloader/issues/112#issuecomment-2812535100)
+- @leowerd за [корректные имена исполнителей](https://github.com/llistochek/yandex-music-downloader/issues/93#issuecomment-2960210879) при загрузке сборников
 
 
 ## Дисклеймер

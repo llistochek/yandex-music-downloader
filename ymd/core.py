@@ -115,8 +115,10 @@ def prepare_base_path(
     if albums := track.albums:
         album = albums[0]
         track_position = album.track_position
-        if artists := album.artists:
+        if artists := track.artists:
             artist = artists[0]
+        elif artists := album.artists:
+            artists = artists[0]
     if artist is None and (artists := track.artists):
         artist = artists[0]
     repl_dict: dict[str, Union[str, int, None]] = {
