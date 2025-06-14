@@ -149,21 +149,19 @@ def set_tags(
     album_cover: Optional[AlbumCover],
     compatibility_level: int,
 ) -> None:
-    album = track.albums[0] if track.albums else Album()
-    track_artists = [a.name for a in track.artists if a.name]
-    album_artists = [a.name for a in album.artists if a.name]
-    genre = None
-    if hasattr(track, 'genre') and track.genre:
-    genre = track.genre
-    elif hasattr(album, 'genre') and album.genre:
-    genre = album.genre
-    
     file_type = CONTAINER_MUTAGEN_MAPPING.get(container)
     if file_type is None:
         raise ValueError(f"Unknown container: {container}")
+
     tag = file_type(path)
+    album = track.albums[0] if track.albums else Album()
     album_title = full_title(album)
     track_title = full_title(track)
+    track_artists = [a.name for a in track.artists if a.name]
+    album_artists = [a.name for a in album.artists if a.name]
+    genre = None
+    if album.genre:
+        genre = album.genre
     track_number = None
     disc_number = None
     if position := album.track_position:
@@ -195,7 +193,7 @@ def set_tags(
             tag["TPOS"] = TPOS(encoding=3, text=str(disc_number))
         if genre:
             tag["TCON"] = TCON(encoding=3, text=genre)
-            
+
         if lyrics:
             tag["USLT"] = USLT(encoding=3, text=lyrics)
         if album_cover:
@@ -258,7 +256,7 @@ def set_tags(
             tag["discnumber"] = str(disc_number)
         if genre:
             tag["genre"] = genre
-            
+
         if lyrics:
             tag["lyrics"] = lyrics
         if album_cover is not None:
