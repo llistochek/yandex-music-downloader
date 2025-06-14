@@ -1,4 +1,5 @@
 import datetime as dt
+import hashlib
 import re
 import typing
 from collections.abc import Callable
@@ -52,6 +53,9 @@ MAX_COMPATIBILITY_LEVEL = 1
 
 AUDIO_FILE_SUFFIXES = {".mp3", ".flac", ".m4a"}
 TEMPORARY_FILE_NAME_TEMPLATE = ".yandex-music-downloader.{}.tmp"
+MAX_FILE_NAME_LENGTH_WITHOUT_SUFFIX = 255 - max(
+    len(suffix) for suffix in AUDIO_FILE_SUFFIXES
+)
 
 
 class CoreTrackQuality(IntEnum):
@@ -137,7 +141,14 @@ def prepare_base_path(
             clear_re = UNSAFE_PATH_CLEAR_RE
         replacement = clear_re.sub("_", replacement)
         path_str = path_str.replace(placeholder, replacement)
-    return Path(path_str)
+    path = Path(path_str)
+    trimmed_parts = [
+        part
+        if len(part) <= MAX_FILE_NAME_LENGTH_WITHOUT_SUFFIX
+        else part[:MAX_FILE_NAME_LENGTH_WITHOUT_SUFFIX]
+        for part in path.parts
+    ]
+    return Path(*trimmed_parts)
 
 
 def set_tags(
@@ -371,8 +382,9 @@ def write_via_temporary_file(
     target_path: Path,
     temporary_file_hook: Optional[Callable[[Path], None]] = None,
 ) -> Path:
+    target_name = hashlib.sha256(target_path.name.encode()).hexdigest()
     temporary_file = target_path.parent / (
-        TEMPORARY_FILE_NAME_TEMPLATE.format(target_path.name)
+        TEMPORARY_FILE_NAME_TEMPLATE.format(target_name)
     )
     try:
         temporary_file.write_bytes(data)
