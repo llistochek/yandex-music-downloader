@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yandex-music-downloader"
-version = "3.4.9"
+version = "3.4.10"
 description = "Загрузчик музыки с сервиса Яндекс.Музыка"
 requires-python = ">=3.9"
 readme = "README.md"
