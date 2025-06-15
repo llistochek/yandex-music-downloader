@@ -6,7 +6,7 @@ import re
 import time
 import typing
 from argparse import ArgumentTypeError
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from pathlib import Path
 from typing import Optional, Union
 from urllib.parse import urlparse
@@ -52,17 +52,25 @@ def compatibility_level_arg(astr: str) -> int:
     )
 
 
-def natural_int_arg(astr: str) -> int:
-    aint = int(astr)
-    if aint > 0:
-        return aint
-    raise ArgumentTypeError("Значение должен быть > 0")
+def checked_int_arg(
+    min_value: int, max_value: Optional[int] = None
+) -> Callable[[str], int]:
+    def func(astr: str) -> int:
+        aint = int(astr)
+        if aint >= min_value and (max_value is None or aint <= max_value):
+            return aint
+        error_text = f"Значение должен быть >= {min_value}"
+        if max_value is not None:
+            error_text += f" и <= {max_value}"
+        raise ArgumentTypeError(error_text)
+
+    return func
 
 
 def cover_resolution_arg(astr: str) -> int:
     if astr == "original":
         return -1
-    return int(astr)
+    return checked_int_arg(100)(astr)
 
 
 def lyrics_format_arg(astr: str) -> core.LyricsFormat:
@@ -115,7 +123,7 @@ def main():
         "--delay",
         default=DEFAULT_DELAY,
         metavar="<Задержка>",
-        type=int,
+        type=checked_int_arg(0),
         help=show_default("Задержка между запросами, в секундах"),
     )
     common_group.add_argument(
@@ -137,14 +145,32 @@ def main():
             f"Уровень совместимости, от {core.MIN_COMPATIBILITY_LEVEL} до {core.MAX_COMPATIBILITY_LEVEL}. См. README для подробного описания"
         ),
     )
-    common_group.add_argument(
+
+    network_group = parser.add_argument_group("Сетевые параметры")
+    network_group.add_argument(
         "--timeout",
         metavar="<Время ожидания>",
         default=20,
-        type=natural_int_arg,
+        type=checked_int_arg(1),
         help=show_default(
             "Время ожидания ответа от сервера, в секундах. Увеличьте если возникают сетевые ошибки"
         ),
+    )
+    network_group.add_argument(
+        "--tries",
+        metavar="<Количество попыток>",
+        default=20,
+        type=checked_int_arg(0),
+        help=show_default(
+            "Количество попыток при возникновении сетевых ошибок. 0 - бесконечное количество попыток"
+        ),
+    )
+    network_group.add_argument(
+        "--retry-delay",
+        metavar="<Задержка>",
+        default=5,
+        type=checked_int_arg(0),
+        help=show_default("Задержка между повторными запросами при сетевых ошибках"),
     )
     common_group.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
 
@@ -221,7 +247,12 @@ def main():
             print("Параметер url указан в неверном формате")
             return 1
 
-    client = core.init_client(args.token, args.timeout)
+    client = core.init_client(
+        token=args.token,
+        timeout=args.timeout,
+        max_try_count=args.tries,
+        retry_delay=args.retry_delay,
+    )
     result_tracks: Iterable[Track] = []
 
     def album_tracks_gen(album_ids: Iterable[Union[int, str]]) -> Generator[Track]:

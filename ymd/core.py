@@ -1,6 +1,7 @@
 import datetime as dt
 import hashlib
 import re
+import time
 import typing
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -33,6 +34,7 @@ from yandex_music import (
     Track,
     YandexMusicModel,
 )
+from yandex_music.exceptions import NetworkError
 
 from ymd import api
 from ymd.api import (
@@ -91,9 +93,31 @@ class AlbumCover:
     mime_type: MimeType
 
 
-def init_client(token: str, timeout: int) -> Client:
+def init_client(
+    token: str, timeout: int, max_try_count: int, retry_delay: int
+) -> Client:
+    assert timeout > 0
+    assert max_try_count >= 0
+    assert retry_delay >= 0
+
     client = Client(token)
     client.request.set_timeout(timeout)
+
+    original_wrapper = client.request._request_wrapper
+
+    def retry_wrapper(*args, **kwargs):
+        try_count = 0
+        while True:
+            try:
+                return original_wrapper(*args, **kwargs)
+            except NetworkError as error:
+                if max_try_count == 0 or try_count < max_try_count:
+                    try_count += 1
+                    time.sleep(retry_delay)
+                    continue
+                raise error
+
+    client.request._request_wrapper = retry_wrapper
     return client.init()
 
 
