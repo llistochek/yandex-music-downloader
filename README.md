@@ -122,7 +122,7 @@ ID:
   --unsafe-path         Не очищать путь от недопустимых символов
   --dir <Папка>         Папка для загрузки музыки (по умолчанию: .)
   --path-pattern <Паттерн>
-                        Поддерживает следующие заполнители: #number, #artist, #album-artist, #title, #album, #year, #artist-id, #album-id, #track-id, #number-padded (по умолчанию: #album-artist/#album/#number - #title)
+                        Поддерживает следующие заполнители: #number, #track-artist, #album-artist, #title, #album, #year, #artist-id, #album-id, #track-id, #number-padded (по умолчанию: #album-artist/#album/#number - #title)
 
 Авторизация:
   --token <Токен>       Токен для авторизации. См. README для способов получения

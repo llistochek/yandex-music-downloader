@@ -135,27 +135,26 @@ def prepare_base_path(
 ) -> Path:
     path_str = str(path_pattern)
     album = None
-    artist = None
+    album_artist = None
+    track_artist = None
     track_position = None
     if albums := track.albums:
         album = albums[0]
         track_position = album.track_position
-        if artists := track.artists:
-            artist = artists[0]
-        elif artists := album.artists:
-            artists = artists[0]
-    if artist is None and (artists := track.artists):
-        artist = artists[0]
+        if artists := album.artists:
+            album_artist = artists[0]
+    if artists := track.artists:
+        track_artist = artists[0]
     repl_dict: dict[str, Union[str, int, None]] = {
         "#number-padded": str(track_position.index).zfill(len(str(album.track_count)))
         if track_position and album
         else None,
-        "#album-artist": artist.name if artist else None,
-        "#artist-id": artist.id if artist else None,
+        "#album-artist": album_artist.name if album_artist else None,
+        "#track-artist": track_artist.name if track_artist else None,
+        "#artist-id": track_artist.id if track_artist else None,
         "#album-id": album.id if album else None,
         "#track-id": track.id,
         "#number": track_position.index if track_position else None,
-        "#artist": artist.name if artist else None,
         "#title": full_title(track),
         "#album": full_title(album) if album else None,
         "#year": album.year if album else None,

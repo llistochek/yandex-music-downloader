@@ -205,7 +205,7 @@ def main():
         type=Path,
         help=show_default(
             "Поддерживает следующие заполнители:"
-            " #number, #artist, #album-artist, #title,"
+            " #number, #track-artist, #album-artist, #title,"
             " #album, #year, #artist-id, #album-id, #track-id, #number-padded"
         ),
     )
