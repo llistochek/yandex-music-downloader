@@ -1,5 +1,7 @@
 import datetime as dt
+import hashlib
 import re
+import time
 import typing
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -32,6 +34,7 @@ from yandex_music import (
     Track,
     YandexMusicModel,
 )
+from yandex_music.exceptions import NetworkError
 
 from ymd import api
 from ymd.api import (
@@ -53,6 +56,9 @@ MAX_COMPATIBILITY_LEVEL = 1
 
 AUDIO_FILE_SUFFIXES = {".mp3", ".flac", ".m4a"}
 TEMPORARY_FILE_NAME_TEMPLATE = ".yandex-music-downloader.{}.tmp"
+MAX_FILE_NAME_LENGTH_WITHOUT_SUFFIX = 255 - max(
+    len(suffix) for suffix in AUDIO_FILE_SUFFIXES
+)
 
 
 class CoreTrackQuality(IntEnum):
@@ -87,9 +93,31 @@ class AlbumCover:
     mime_type: MimeType
 
 
-def init_client(token: str, timeout: int) -> Client:
+def init_client(
+    token: str, timeout: int, max_try_count: int, retry_delay: int
+) -> Client:
+    assert timeout > 0
+    assert max_try_count >= 0
+    assert retry_delay >= 0
+
     client = Client(token)
     client.request.set_timeout(timeout)
+
+    original_wrapper = client.request._request_wrapper
+
+    def retry_wrapper(*args, **kwargs):
+        try_count = 0
+        while True:
+            try:
+                return original_wrapper(*args, **kwargs)
+            except NetworkError as error:
+                if max_try_count == 0 or try_count < max_try_count:
+                    try_count += 1
+                    time.sleep(retry_delay)
+                    continue
+                raise error
+
+    client.request._request_wrapper = retry_wrapper
     return client.init()
 
 
@@ -107,25 +135,26 @@ def prepare_base_path(
 ) -> Path:
     path_str = str(path_pattern)
     album = None
-    artist = None
+    album_artist = None
+    track_artist = None
     track_position = None
     if albums := track.albums:
         album = albums[0]
         track_position = album.track_position
         if artists := album.artists:
-            artist = artists[0]
-    if artist is None and (artists := track.artists):
-        artist = artists[0]
+            album_artist = artists[0]
+    if artists := track.artists:
+        track_artist = artists[0]
     repl_dict: dict[str, Union[str, int, None]] = {
         "#number-padded": str(track_position.index).zfill(len(str(album.track_count)))
         if track_position and album
         else None,
-        "#album-artist": artist.name if artist else None,
-        "#artist-id": artist.id if artist else None,
+        "#album-artist": album_artist.name if album_artist else None,
+        "#track-artist": track_artist.name if track_artist else None,
+        "#artist-id": track_artist.id if track_artist else None,
         "#album-id": album.id if album else None,
         "#track-id": track.id,
         "#number": track_position.index if track_position else None,
-        "#artist": artist.name if artist else None,
         "#title": full_title(track),
         "#album": full_title(album) if album else None,
         "#year": album.year if album else None,
@@ -138,7 +167,14 @@ def prepare_base_path(
             clear_re = UNSAFE_PATH_CLEAR_RE
         replacement = clear_re.sub("_", replacement)
         path_str = path_str.replace(placeholder, replacement)
-    return Path(path_str)
+    path = Path(path_str)
+    trimmed_parts = [
+        part
+        if len(part) <= MAX_FILE_NAME_LENGTH_WITHOUT_SUFFIX
+        else part[:MAX_FILE_NAME_LENGTH_WITHOUT_SUFFIX]
+        for part in path.parts
+    ]
+    return Path(*trimmed_parts)
 
 
 def set_tags(
@@ -381,8 +417,9 @@ def write_via_temporary_file(
     target_path: Path,
     temporary_file_hook: Optional[Callable[[Path], None]] = None,
 ) -> Path:
+    target_name = hashlib.sha256(target_path.name.encode()).hexdigest()
     temporary_file = target_path.parent / (
-        TEMPORARY_FILE_NAME_TEMPLATE.format(target_path.name)
+        TEMPORARY_FILE_NAME_TEMPLATE.format(target_name)
     )
     try:
         temporary_file.write_bytes(data)

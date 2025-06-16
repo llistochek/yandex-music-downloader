@@ -6,7 +6,7 @@ import re
 import time
 import typing
 from argparse import ArgumentTypeError
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from pathlib import Path
 from typing import Optional, Union
 from urllib.parse import urlparse
@@ -34,35 +34,25 @@ def show_default(text: Optional[str] = None) -> str:
     return f"{text} ({default})"
 
 
-def quality_arg(astr: str) -> int:
-    aint = int(astr)
-    if 0 <= aint <= 2:
-        return aint
-    raise ArgumentTypeError("Значение должно быть в промежутке от 0 до 2")
+def checked_int_arg(
+    min_value: int, max_value: Optional[int] = None
+) -> Callable[[str], int]:
+    def func(astr: str) -> int:
+        aint = int(astr)
+        if aint >= min_value and (max_value is None or aint <= max_value):
+            return aint
+        error_text = f"Значение должен быть >= {min_value}"
+        if max_value is not None:
+            error_text += f" и <= {max_value}"
+        raise ArgumentTypeError(error_text)
 
-
-def compatibility_level_arg(astr: str) -> int:
-    aint = int(astr)
-    min_val = core.MIN_COMPATIBILITY_LEVEL
-    max_val = core.MAX_COMPATIBILITY_LEVEL
-    if min_val <= aint <= max_val:
-        return aint
-    raise ArgumentTypeError(
-        f"Значение должен быть в промежутке от {min_val} до {max_val}"
-    )
-
-
-def natural_int_arg(astr: str) -> int:
-    aint = int(astr)
-    if aint > 0:
-        return aint
-    raise ArgumentTypeError("Значение должен быть > 0")
+    return func
 
 
 def cover_resolution_arg(astr: str) -> int:
     if astr == "original":
         return -1
-    return int(astr)
+    return checked_int_arg(100)(astr)
 
 
 def lyrics_format_arg(astr: str) -> core.LyricsFormat:
@@ -83,7 +73,7 @@ def main():
         "--quality",
         metavar="<Качество>",
         default=0,
-        type=quality_arg,
+        type=checked_int_arg(0, 2),
         help="Качество трека:\n0 - Низкое (AAC 64kbps)\n1 - Оптимальное (AAC 192kbps)\n2 - Лучшее (FLAC)\n(по умолчанию: %(default)s)",
     )
     common_group.add_argument(
@@ -115,7 +105,7 @@ def main():
         "--delay",
         default=DEFAULT_DELAY,
         metavar="<Задержка>",
-        type=int,
+        type=checked_int_arg(0),
         help=show_default("Задержка между запросами, в секундах"),
     )
     common_group.add_argument(
@@ -132,19 +122,39 @@ def main():
         "--compatibility-level",
         metavar="<Уровень совместимости>",
         default=1,
-        type=compatibility_level_arg,
+        type=checked_int_arg(
+            core.MIN_COMPATIBILITY_LEVEL, core.MAX_COMPATIBILITY_LEVEL
+        ),
         help=show_default(
             f"Уровень совместимости, от {core.MIN_COMPATIBILITY_LEVEL} до {core.MAX_COMPATIBILITY_LEVEL}. См. README для подробного описания"
         ),
     )
-    common_group.add_argument(
+
+    network_group = parser.add_argument_group("Сетевые параметры")
+    network_group.add_argument(
         "--timeout",
         metavar="<Время ожидания>",
         default=20,
-        type=natural_int_arg,
+        type=checked_int_arg(1),
         help=show_default(
             "Время ожидания ответа от сервера, в секундах. Увеличьте если возникают сетевые ошибки"
         ),
+    )
+    network_group.add_argument(
+        "--tries",
+        metavar="<Количество попыток>",
+        default=20,
+        type=checked_int_arg(0),
+        help=show_default(
+            "Количество попыток при возникновении сетевых ошибок. 0 - бесконечное количество попыток"
+        ),
+    )
+    network_group.add_argument(
+        "--retry-delay",
+        metavar="<Задержка>",
+        default=5,
+        type=checked_int_arg(0),
+        help=show_default("Задержка между повторными запросами при сетевых ошибках"),
     )
     common_group.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
 
@@ -179,7 +189,7 @@ def main():
         type=Path,
         help=show_default(
             "Поддерживает следующие заполнители:"
-            " #number, #artist, #album-artist, #title,"
+            " #number, #track-artist, #album-artist, #title,"
             " #album, #year, #artist-id, #album-id, #track-id, #number-padded"
         ),
     )
@@ -221,7 +231,12 @@ def main():
             print("Параметер url указан в неверном формате")
             return 1
 
-    client = core.init_client(args.token, args.timeout)
+    client = core.init_client(
+        token=args.token,
+        timeout=args.timeout,
+        max_try_count=args.tries,
+        retry_delay=args.retry_delay,
+    )
     result_tracks: Iterable[Track] = []
 
     def album_tracks_gen(album_ids: Iterable[Union[int, str]]) -> Generator[Track]:
