@@ -276,15 +276,21 @@ def main():
         result_tracks = album_tracks_gen(
             a.id for a in albums_gen() if filter_album(a) and a.id is not None
         )
+        get_artist = client.artists(args.artist_id)[0]
+        total_tracks = get_artist.counts.tracks
     elif args.album_id is not None:
         result_tracks = album_tracks_gen((args.album_id,))
+        get_album = client.albums_with_tracks(args.album_id)
+        total_tracks = get_album.track_count
     elif args.track_id is not None:
         track = client.tracks(args.track_id)
         result_tracks = track
+        total_tracks = 1
     elif args.playlist_id is not None:
         user, kind = args.playlist_id.split("/")
         playlist = typing.cast(Playlist, client.users_playlists(kind, user))
-
+        total_tracks = playlist.track_count
+        
         def playlist_tracks_gen() -> Generator[Track]:
             tracks = playlist.fetch_tracks()
             for i in range(0, len(tracks), FETCH_PAGE_SIZE):
@@ -293,11 +299,13 @@ def main():
                 )
 
         result_tracks = playlist_tracks_gen()
-
+    track_counter = 0
     covers_cache = {}
     for track in result_tracks:
+        track_counter += 1
+        progress_status = f"[{track_counter}/{total_tracks}]"
         if not track.available:
-            print(f"Трек {track.title} не доступен для скачивания")
+            print(f"{progress_status} Трек {track.title} не доступен для скачивания")
             continue
 
         save_path = args.dir / core.prepare_base_path(
@@ -321,7 +329,7 @@ def main():
         if bitrate > 0:
             format_info += f" {bitrate}kbps"
         format_info += "]"
-        print(f"{format_info} Загружается {downloadable.path}")
+        print(f"{progress_status} {format_info} Загружается {downloadable.path}")
         core.download_track(
             track_info=downloadable,
             lyrics_format=args.lyrics_format,
