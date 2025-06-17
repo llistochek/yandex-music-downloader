@@ -260,23 +260,30 @@ def main():
                 return True
             return False
 
-        def albums_gen() -> Generator[Album]:
+        def albums_id_gen() -> Generator[int]:
             has_next = True
             page = 0
             while has_next:
-                if albums := client.artists_direct_albums(args.artist_id, page):
-                    yield from albums.albums
+                if albums_info := client.artists_direct_albums(args.artist_id, page):
+                    for album in albums_info.albums:
+                        if filter_album(album):
+                            assert album.id
+                            yield album.id
+                        else:
+                            nonlocal total_track_count
+                            if (
+                                track_count := album.track_count
+                            ) and total_track_count is not None:
+                                total_track_count -= track_count
                 else:
                     break
-                if pager := albums.pager:
+                if pager := albums_info.pager:
                     page = pager.page + 1
                     has_next = pager.per_page * page < pager.total
                 else:
                     break
 
-        result_tracks = album_tracks_gen(
-            a.id for a in albums_gen() if filter_album(a) and a.id is not None
-        )
+        result_tracks = album_tracks_gen(albums_id_gen())
         artist = client.artists(args.artist_id)[0]
         if counts := artist.counts:
             total_track_count = counts.tracks
