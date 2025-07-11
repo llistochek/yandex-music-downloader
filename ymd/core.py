@@ -7,7 +7,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from pathlib import Path
-from typing import Optional, Union
 
 import mutagen
 from mutagen.flac import FLAC, Picture
@@ -145,7 +144,7 @@ def prepare_base_path(
             album_artist = artists[0]
     if artists := track.artists:
         track_artist = artists[0]
-    repl_dict: dict[str, Union[str, int, None]] = {
+    repl_dict: dict[str, str | int | None] = {
         "#number-padded": str(track_position.index).zfill(len(str(album.track_count)))
         if track_position and album
         else None,
@@ -181,8 +180,8 @@ def set_tags(
     path: Path,
     track: Track,
     container: Container,
-    lyrics: Optional[str],
-    album_cover: Optional[AlbumCover],
+    lyrics: str | None,
+    album_cover: AlbumCover | None,
     compatibility_level: int,
 ) -> None:
     file_type = CONTAINER_MUTAGEN_MAPPING.get(container)
@@ -204,7 +203,7 @@ def set_tags(
         track_number = position.index
         disc_number = position.volume
     iso8601_release_date = None
-    release_year: Optional[str] = None
+    release_year: str | None = None
     if album.release_date is not None:
         iso8601_release_date = dt.datetime.fromisoformat(album.release_date).astimezone(
             dt.timezone.utc
@@ -313,7 +312,7 @@ def download_track(
     cover_resolution: int = DEFAULT_COVER_RESOLUTION,
     lyrics_format: LyricsFormat = LyricsFormat.NONE,
     embed_cover: bool = False,
-    covers_cache: Optional[dict[int, AlbumCover]] = None,
+    covers_cache: dict[int, AlbumCover] | None = None,
     compatibility_level: int = 1,
 ):
     if embed_cover and covers_cache is None:
@@ -415,7 +414,7 @@ def to_downloadable_track(
 def write_via_temporary_file(
     data: bytes,
     target_path: Path,
-    temporary_file_hook: Optional[Callable[[Path], None]] = None,
+    temporary_file_hook: Callable[[Path], None] | None = None,
 ) -> Path:
     target_name = hashlib.sha256(target_path.name.encode()).hexdigest()
     temporary_file = target_path.parent / (

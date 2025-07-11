@@ -8,7 +8,6 @@ import typing
 from argparse import ArgumentTypeError
 from collections.abc import Callable, Generator, Iterable
 from pathlib import Path
-from typing import Optional, Union
 from urllib.parse import urlparse
 
 from yandex_music import Album, Playlist, Track
@@ -27,7 +26,7 @@ FETCH_PAGE_SIZE = 10
 logger = logging.getLogger("yandex-music-downloader")
 
 
-def show_default(text: Optional[str] = None) -> str:
+def show_default(text: str | None = None) -> str:
     default = "по умолчанию: %(default)s"
     if text is None:
         return default
@@ -35,7 +34,7 @@ def show_default(text: Optional[str] = None) -> str:
 
 
 def checked_int_arg(
-    min_value: int, max_value: Optional[int] = None
+    min_value: int, max_value: int | None = None
 ) -> Callable[[str], int]:
     def func(astr: str) -> int:
         aint = int(astr)
@@ -239,7 +238,7 @@ def main():
     )
     result_tracks: Iterable[Track]
 
-    def album_tracks_gen(album_ids: Iterable[Union[int, str]]) -> Generator[Track]:
+    def album_tracks_gen(album_ids: Iterable[int | str]) -> Generator[Track]:
         for album_id in album_ids:
             if full_album := client.albums_with_tracks(album_id):
                 if volumes := full_album.volumes:
