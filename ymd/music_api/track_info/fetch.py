@@ -5,11 +5,11 @@ from pydantic import BaseModel
 from yandex_music import Track
 
 from ymd.music_api.file_format import FILE_FORMAT_MAPPING, FileFormat
-from ymd.music_api.track_info.get_track_info_params import (
+from ymd.music_api.request_signing import sign_params
+from ymd.music_api.track_info.params import (
     ApiTrackQuality,
     TrackInfoRequestParams,
 )
-from ymd.request_signing import sign_params
 
 
 @dataclass

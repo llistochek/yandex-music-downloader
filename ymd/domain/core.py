@@ -35,11 +35,11 @@ from yandex_music import (
 )
 from yandex_music.exceptions import NetworkError
 
-from ymd.mime_utils import MimeType, guess_mime_type
 from ymd.music_api import file_format
-from ymd.music_api.download_track import download_track
-from ymd.music_api.track_info.get_track_info import TrackDownloadInfo, get_download_info
-from ymd.music_api.track_info.get_track_info_params import ApiTrackQuality
+from ymd.music_api.downloader.downloader import download_track
+from ymd.music_api.mime_guesser import MimeType, guess_mime_type
+from ymd.music_api.track_info.fetch import TrackDownloadInfo, get_download_info
+from ymd.music_api.track_info.params import ApiTrackQuality
 
 UNSAFE_PATH_CLEAR_RE = re.compile(r"[/\\]+")
 SAFE_PATH_CLEAR_RE = re.compile(r"([^\w\-\'() ]|^\s+|\s+$)")

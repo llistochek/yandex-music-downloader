@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 from yandex_music import Album, Playlist, Track
 
-from ymd import core
+from ymd.domain import core
 
 DEFAULT_DELAY = 0
 
