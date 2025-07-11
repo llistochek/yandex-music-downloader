@@ -15,7 +15,8 @@ dependencies = [
     "yandex-music @ https://github.com/llistochek/yandex-music-api/archive/9623fbca7704f47766614efe51d66c9fd496714c.zip",
     "mutagen>=1.47.0",
     "StrEnum",
-    "pycryptodome"
+    "pycryptodome",
+    "pydantic (>=2.11.7,<3.0.0)"
 ]
 
 [project.scripts]
