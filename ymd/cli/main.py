@@ -68,30 +68,30 @@ def main():
     )
 
     common_group = parser.add_argument_group("Общие параметры")
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--quality",
         metavar="<Качество>",
         default=0,
         type=checked_int_arg(0, 2),
         help="Качество трека:\n0 - Низкое (AAC 64kbps)\n1 - Оптимальное (AAC 192kbps)\n2 - Лучшее (FLAC)\n(по умолчанию: %(default)s)",
     )
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--skip-existing", action="store_true", help="Пропускать уже загруженные треки"
     )
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--lyrics-format",
         type=lyrics_format_arg,
         default=core.LyricsFormat.NONE,
         help=show_default("Формат текста песни"),
         choices=core.LyricsFormat,
     )
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--add-lyrics", action="store_true", help=argparse.SUPPRESS
     )
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--embed-cover", action="store_true", help="Встраивать обложку в аудиофайл"
     )
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--cover-resolution",
         default=core.DEFAULT_COVER_RESOLUTION,
         metavar="<Разрешение обложки>",
@@ -100,24 +100,24 @@ def main():
             'Разрешение обложки (в пикселях). Передайте "original" для загрузки в оригинальном (наилучшем) разрешении'
         ),
     )
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--delay",
         default=DEFAULT_DELAY,
         metavar="<Задержка>",
         type=checked_int_arg(0),
         help=show_default("Задержка между запросами, в секундах"),
     )
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--stick-to-artist",
         action="store_true",
         help="Загружать альбомы, созданные только данным исполнителем",
     )
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--only-music",
         action="store_true",
         help="Загружать только музыкальные альбомы (пропускать подкасты и аудиокниги)",
     )
-    common_group.add_argument(
+    _ = common_group.add_argument(
         "--compatibility-level",
         metavar="<Уровень совместимости>",
         default=1,
@@ -130,7 +130,7 @@ def main():
     )
 
     network_group = parser.add_argument_group("Сетевые параметры")
-    network_group.add_argument(
+    _ = network_group.add_argument(
         "--timeout",
         metavar="<Время ожидания>",
         default=20,
@@ -139,7 +139,7 @@ def main():
             "Время ожидания ответа от сервера, в секундах. Увеличьте если возникают сетевые ошибки"
         ),
     )
-    network_group.add_argument(
+    _ = network_group.add_argument(
         "--tries",
         metavar="<Количество попыток>",
         default=20,
@@ -148,53 +148,53 @@ def main():
             "Количество попыток при возникновении сетевых ошибок. 0 - бесконечное количество попыток"
         ),
     )
-    network_group.add_argument(
+    _ = network_group.add_argument(
         "--retry-delay",
         metavar="<Задержка>",
         default=5,
         type=checked_int_arg(0),
         help=show_default("Задержка между повторными запросами при сетевых ошибках"),
     )
-    common_group.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
+    _ = common_group.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
 
     id_group_meta = parser.add_argument_group("ID")
     id_group = id_group_meta.add_mutually_exclusive_group(required=True)
-    id_group.add_argument("--artist-id", metavar="<ID исполнителя>")
-    id_group.add_argument("--album-id", metavar="<ID альбома>")
-    id_group.add_argument("--track-id", metavar="<ID трека>")
-    id_group.add_argument(
+    _ = id_group.add_argument("--artist-id", metavar="<ID исполнителя>")
+    _ = id_group.add_argument("--album-id", metavar="<ID альбома>")
+    _ = id_group.add_argument("--track-id", metavar="<ID трека>")
+    _ = id_group.add_argument(
         "--playlist-id",
         metavar="<владелец плейлиста>/<тип плейлиста>",
     )
-    id_group.add_argument("-u", "--url", help="URL исполнителя/альбома/трека/плейлиста")
+    _ = id_group.add_argument("-u", "--url", help="URL исполнителя/альбома/трека/плейлиста")
 
     path_group = parser.add_argument_group("Указание пути")
-    path_group.add_argument(
+    _ = path_group.add_argument(
         "--unsafe-path",
         action="store_true",
         help="Не очищать путь от недопустимых символов",
     )
-    path_group.add_argument(
+    _ = path_group.add_argument(
         "--dir",
         default=".",
         metavar="<Папка>",
         help=show_default("Папка для загрузки музыки"),
         type=Path,
     )
-    path_group.add_argument(
+    _ = path_group.add_argument(
         "--path-pattern",
         default=core.DEFAULT_PATH_PATTERN,
         metavar="<Паттерн>",
         type=Path,
         help=show_default(
-            "Поддерживает следующие заполнители:"
-            " #number, #track-artist, #album-artist, #title,"
+            "Поддерживает следующие заполнители:" +
+            " #number, #track-artist, #album-artist, #title," +
             " #album, #year, #artist-id, #album-id, #track-id, #number-padded"
         ),
     )
 
     auth_group = parser.add_argument_group("Авторизация")
-    auth_group.add_argument(
+    _ = auth_group.add_argument(
         "--token",
         required=True,
         metavar="<Токен>",
@@ -345,7 +345,7 @@ def main():
             format_info += f" {bitrate}kbps"
         format_info += "]"
         print(f"{progress_status}{format_info} Загружается {downloadable.path}")
-        core.download_track(
+        core.core_download_track(
             track_info=downloadable,
             lyrics_format=args.lyrics_format,
             embed_cover=args.embed_cover,

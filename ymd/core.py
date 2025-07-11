@@ -35,14 +35,11 @@ from yandex_music import (
 )
 from yandex_music.exceptions import NetworkError
 
-from ymd import api
-from ymd.api import (
-    ApiTrackQuality,
-    Container,
-    CustomDownloadInfo,
-    get_download_info,
-)
 from ymd.mime_utils import MimeType, guess_mime_type
+from ymd.music_api import file_format
+from ymd.music_api.download_track import download_track
+from ymd.music_api.track_info.get_track_info import TrackDownloadInfo, get_download_info
+from ymd.music_api.track_info.get_track_info_params import ApiTrackQuality
 
 UNSAFE_PATH_CLEAR_RE = re.compile(r"[/\\]+")
 SAFE_PATH_CLEAR_RE = re.compile(r"([^\w\-\'() ]|^\s+|\s+$)")
@@ -72,16 +69,16 @@ class LyricsFormat(LowercaseStrEnum):
     LRC = auto()
 
 
-CONTAINER_MUTAGEN_MAPPING: dict[Container, type[mutagen.FileType]] = {  # type: ignore
-    Container.MP3: MP3,
-    Container.FLAC: FLAC,
-    Container.MP4: MP4,
+CONTAINER_MUTAGEN_MAPPING: dict[file_format.Container, type[mutagen.FileType]] = {
+    file_format.Container.MP3: MP3,
+    file_format.Container.FLAC: FLAC,
+    file_format.Container.MP4: MP4,
 }
 
 
 @dataclass
 class DownloadableTrack:
-    download_info: CustomDownloadInfo
+    download_info: TrackDownloadInfo
     path: Path
     track: Track
 
@@ -179,7 +176,7 @@ def prepare_base_path(
 def set_tags(
     path: Path,
     track: Track,
-    container: Container,
+    container: file_format.Container,
     lyrics: str | None,
     album_cover: AlbumCover | None,
     compatibility_level: int,
@@ -307,7 +304,7 @@ def set_tags(
     tag.save()
 
 
-def download_track(
+def core_download_track(
     track_info: DownloadableTrack,
     cover_resolution: int = DEFAULT_COVER_RESOLUTION,
     lyrics_format: LyricsFormat = LyricsFormat.NONE,
@@ -364,7 +361,7 @@ def download_track(
                 write_via_temporary_file(album_cover.data, cover_path)
 
     download_info = track_info.download_info
-    track_data = api.download_track(client, download_info)
+    track_data = download_track(client, download_info)
 
     write_via_temporary_file(
         track_data,
@@ -394,11 +391,11 @@ def to_downloadable_track(
     download_info = get_download_info(track, api_quality)
     container = download_info.file_format.container
 
-    if container == Container.MP3:
+    if container == file_format.Container.MP3:
         suffix = ".mp3"
-    elif container == Container.MP4:
+    elif container == file_format.Container.MP4:
         suffix = ".m4a"
-    elif container == Container.FLAC:
+    elif container == file_format.Container.FLAC:
         suffix = ".flac"
     else:
         raise RuntimeError("Unknown codec")
