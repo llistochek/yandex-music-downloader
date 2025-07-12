@@ -4,7 +4,6 @@ import typing
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
 from urllib.parse import urlparse
 
 import typer
@@ -13,10 +12,12 @@ from yandex_music import Album, Client, Playlist, Track
 from ymd.cli.logger import setup_logger
 from ymd.cli.options.download import (
     DownloadQuality,
+    OnlyCheckUnavailableOption,
     OnlyMusicOption,
     QualityOption,
     StickToArtistOption,
     TokenOption,
+    UrlArgument,
 )
 from ymd.cli.options.file_managing import (
     DownloadDirectoryOption,
@@ -312,10 +313,16 @@ def download_tracks(
                 time.sleep(config.delay)
 
 
-UrlArgument = Annotated[
-    str,
-    typer.Argument(help="URL с Яндекс Музыки")
-]
+def show_unavailable_tracks(tracks: Iterable[Track]) -> None:
+    """Показать недоступные для скачивания треки"""
+    for track in tracks:
+        if not track.available:
+            # Получаем имена артистов, если есть
+            if track.artists:
+                artist_names = ", ".join(artist.name for artist in track.artists if artist.name)
+            else:
+                artist_names = "Unknown Artist"
+            print(f"{artist_names} - {track.title}")
 
 
 def main(
@@ -323,6 +330,7 @@ def main(
     url: UrlArgument,
     token: TokenOption,
     # Параметры загрузки
+    only_check_unavailable: OnlyCheckUnavailableOption = False,
     quality: QualityOption = DownloadQuality.mp3_320,
     stick_to_artist: StickToArtistOption = False,
     only_music: OnlyMusicOption = False,
@@ -389,6 +397,10 @@ def main(
     # Получение треков
     tracks, total_count = get_tracks_by_type(client, parsed_url, config)
     
+    if only_check_unavailable:
+        show_unavailable_tracks(tracks)
+        return
+
     # Загрузка треков
     download_tracks(tracks, config, total_count)
 

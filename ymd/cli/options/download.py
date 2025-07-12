@@ -8,6 +8,21 @@ from ymd.domain import core
 
 from .help_panels import HelpPanels
 
+OnlyCheckUnavailableOption = Annotated[
+    bool,
+    typer.Option(
+        "--only-check-unavailable",
+        help="Проверять только недоступные треки (ничего не скачивая)",
+        show_default=True,
+        rich_help_panel=HelpPanels.download,
+    )
+]
+
+UrlArgument = Annotated[
+    str,
+    typer.Argument(help="URL с Яндекс Музыки (например, https://music.yandex.ru/album/123456)"),
+]
+
 StickToArtistOption = Annotated[
     bool,
     typer.Option(
