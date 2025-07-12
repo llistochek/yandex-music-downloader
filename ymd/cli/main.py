@@ -14,7 +14,9 @@ from ymd.cli.options.download import (
 )
 from ymd.cli.options.file_managing import (
     DownloadDirectoryOption,
+    PathPatternOption,
     SkipExistingOption,
+    UnsafePathOption,
 )
 from ymd.cli.options.metadata import (
     CoverResolutionOption,
@@ -35,6 +37,7 @@ app = typer.Typer(
 DEFAULT_DOWNLOAD_DIR = Path(".")
 
 # Doc string функции - выводится в --help справке
+@app.callback()
 def main(
         # Обязательные аргументы
         type: DownloadTypeArgument,
@@ -43,12 +46,16 @@ def main(
 
         # Опциональные настройки
         quality: QualityOption = DownloadQuality.mp3_320,
-        skip_existing: SkipExistingOption = False,
-        download_dir: DownloadDirectoryOption = DEFAULT_DOWNLOAD_DIR,
         lyrics_format: LyricsFormatOption = LyricsFormat.none,
         embed_cover: EmbedCoverOption = False,
         cover_resolution: CoverResolutionOption = "400",
         stick_to_artist: StickToArtistOption = False,
+
+        # Работа с файлами
+        download_dir: DownloadDirectoryOption = DEFAULT_DOWNLOAD_DIR,
+        skip_existing: SkipExistingOption = False,
+        path_pattern: PathPatternOption = "{artist}/{album}/{title}",
+        unsafe_path: UnsafePathOption = False,
 
         # Настройки сети
         delay: RequestsDelayOption = 0,
@@ -93,9 +100,15 @@ def main(
     table.add_section()
     table.add_row("📅  Delay", f"{delay}")   
     table.add_row("⏳  Response Timeout", f"{response_timeout}")
-    
+
+    # Путь и шаблон
+    table.add_section()
+    table.add_row("📂  Download Directory", f"{download_dir}")
+    table.add_row("📝  Path Pattern", f"{path_pattern}")
+    table.add_row("🔒  Unsafe Path", f"{unsafe_path}")
+
     console.print(table)
 
 def run():
     # Запуск приложения с зарегистрированными флагами и командами
-    typer.run(main)
+    app()
