@@ -16,7 +16,8 @@ dependencies = [
     "mutagen>=1.47.0",
     "StrEnum",
     "pycryptodome",
-    "pydantic (>=2.11.7,<3.0.0)"
+    "pydantic (>=2.11.7,<3.0.0)",
+    "typer (>=0.16.0,<0.17.0)"
 ]
 
 [project.scripts]
