@@ -328,7 +328,7 @@ def core_download_track(
                 track_lyrics := track.get_lyrics(format_="LRC")
             ):
                 lyrics = track_lyrics.fetch_lyrics()
-                write_via_temporary_file(lyrics.encode("utf-8"), lrc_path)
+                _ = write_via_temporary_file(lyrics.encode("utf-8"), lrc_path)
         elif lyrics_info.has_available_text_lyrics:
             if track_lyrics := track.get_lyrics(format_="TEXT"):
                 text_lyrics = track_lyrics.fetch_lyrics()
@@ -358,12 +358,12 @@ def core_download_track(
                 raise RuntimeError("Unknown mime type")
             cover_path = target_path.parent / ("cover" + file_suffix)
             if not cover_path.is_file():
-                write_via_temporary_file(album_cover.data, cover_path)
+                _ = write_via_temporary_file(album_cover.data, cover_path)
 
     download_info = track_info.download_info
     track_data = download_track(client, download_info)
 
-    write_via_temporary_file(
+    _ = write_via_temporary_file(
         track_data,
         target_path,
         temporary_file_hook=lambda tmp_path: set_tags(
@@ -418,11 +418,13 @@ def write_via_temporary_file(
         TEMPORARY_FILE_NAME_TEMPLATE.format(target_name)
     )
     try:
-        temporary_file.write_bytes(data)
+        _ = temporary_file.write_bytes(data)
         if temporary_file_hook is not None:
             temporary_file_hook(temporary_file)
     except InterruptedError as e:
         temporary_file.unlink()
         raise e
-    temporary_file.rename(target_path)
+    if target_path.is_file():
+        target_path.unlink()
+    _ = temporary_file.rename(target_path)
     return target_path

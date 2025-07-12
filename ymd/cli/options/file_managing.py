@@ -57,7 +57,7 @@ available_path_patterns = [
 ]
 
 PathPatternOption = Annotated[
-    str,
+    Path,
     typer.Option(
         "--path-pattern",
         help="Шаблон для формирования путей к файлам, доступные паттерны: " + ", ".join(available_path_patterns),

@@ -26,3 +26,15 @@ ResponseTimeoutOption = Annotated[
         rich_help_panel=HelpPanels.network,
     )
 ]
+
+RetryCountOption = Annotated[
+    int,
+    typer.Option(
+        "--retry-count",
+        help="Количество попыток повторного запроса при ошибках сети (0 - бесконечно)",
+        show_default=True,
+        metavar="Количество",
+        min=0,
+        rich_help_panel=HelpPanels.network,
+    )
+]

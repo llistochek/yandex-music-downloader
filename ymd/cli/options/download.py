@@ -4,6 +4,8 @@ from typing import Annotated
 
 import typer
 
+from ymd.domain import core
+
 from .help_panels import HelpPanels
 
 StickToArtistOption = Annotated[
@@ -58,6 +60,16 @@ class DownloadQuality(int, Enum):
     aac_128 = 0
     mp3_320 = 1
     flac = 2
+
+    def toCore(self):
+        if self == DownloadQuality.aac_128:
+            return core.CoreTrackQuality.LOW
+        elif self == DownloadQuality.mp3_320:
+            return core.CoreTrackQuality.NORMAL
+        elif self == DownloadQuality.flac:
+            return core.CoreTrackQuality.LOSSLESS
+        else:
+            raise ValueError(f"Unknown quality: {self}")
 
 QualityOption = Annotated[
     DownloadQuality,

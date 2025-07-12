@@ -3,13 +3,9 @@ from typing import Annotated
 
 import typer
 
+from ymd.domain.core import LyricsFormat
+
 from .help_panels import HelpPanels
-
-
-class LyricsFormat(str, Enum):
-    none = "none"
-    text = "text"
-    lrc = "lrc"
 
 LyricsFormatOption = Annotated[
     LyricsFormat,
@@ -25,11 +21,12 @@ LyricsFormatOption = Annotated[
 
 
 CoverResolutionOption = Annotated[
-    str,
+    int,
     typer.Option(
         "--cover-resolution",
         help="Разрешение обложки",
         metavar="Пиксели",
+        min=100,
         show_default=True,
         rich_help_panel=HelpPanels.metadata
     )
@@ -46,9 +43,9 @@ EmbedCoverOption = Annotated[
     ),
 ]
 
-class TagsCompatibility(str, Enum):
-    mutagen = "mutagen"
-    m4a_compatible = "m4a_compatible"
+class TagsCompatibility(int, Enum):
+    mutagen = 0
+    m4a_compatible = 1
     
 
 TagsCompatibilityOption = Annotated[
