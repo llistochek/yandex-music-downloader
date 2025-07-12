@@ -67,7 +67,7 @@ def main(
         📚 Примеры использования:
             
 
-        ymd download artist_id --token YOUR_TOKEN --quality 1
+        ymd url https://music.yandex.ru/album/123456 --token YOUR_TOKEN --quality 1 
     """
 
 
