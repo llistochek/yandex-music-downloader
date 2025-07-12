@@ -70,3 +70,13 @@ QualityOption = Annotated[
         rich_help_panel=HelpPanels.download
     )
 ]
+
+OnlyMusicOption = Annotated[
+    bool,
+    typer.Option(
+        "--only-music/--no-only-music",
+        help="Загружать только музыкальные файлы (игнорировать подкасты/аудиокниги)",
+        show_default=True,
+        rich_help_panel=HelpPanels.download,
+    ),
+]

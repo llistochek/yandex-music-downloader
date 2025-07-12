@@ -7,6 +7,7 @@ from rich.table import Table
 from ymd.cli.options.download import (
     DownloadQuality,
     DownloadTypeArgument,
+    OnlyMusicOption,
     QualityOption,
     StickToArtistOption,
     TargetOption,
@@ -23,6 +24,8 @@ from ymd.cli.options.metadata import (
     EmbedCoverOption,
     LyricsFormat,
     LyricsFormatOption,
+    TagsCompatibility,
+    TagsCompatibilityOption,
 )
 from ymd.cli.options.network import (
     RequestsDelayOption,
@@ -37,19 +40,22 @@ app = typer.Typer(
 DEFAULT_DOWNLOAD_DIR = Path(".")
 
 # Doc string функции - выводится в --help справке
-@app.callback()
 def main(
         # Обязательные аргументы
         type: DownloadTypeArgument,
         target: TargetOption,
         token: TokenOption,
 
-        # Опциональные настройки
+        # Параметры загрузки
         quality: QualityOption = DownloadQuality.mp3_320,
+        stick_to_artist: StickToArtistOption = False,
+        only_music: OnlyMusicOption = False,
+        
+        # Метаданные
         lyrics_format: LyricsFormatOption = LyricsFormat.none,
         embed_cover: EmbedCoverOption = False,
         cover_resolution: CoverResolutionOption = "400",
-        stick_to_artist: StickToArtistOption = False,
+        tags_compatibility: TagsCompatibilityOption = TagsCompatibility.m4a_compatible,
 
         # Работа с файлами
         download_dir: DownloadDirectoryOption = DEFAULT_DOWNLOAD_DIR,
@@ -67,7 +73,7 @@ def main(
         📚 Примеры использования:
             
 
-        ymd url https://music.yandex.ru/album/123456 --token YOUR_TOKEN --quality 1 
+        ymd url https://music.yandex.ru/album/123456 --token YOUR_TOKEN
     """
 
 
@@ -77,24 +83,26 @@ def main(
     table.add_column("📝 Option", style="dim", width=18)
     table.add_column("🔢\tValue", style="bold")
 
-    # Основные параметры
+    # Основные
     table.add_section()
     table.add_row("🎯  Target", f"{target}")
     table.add_row("📂  Target Type", f"{type}")
     table.add_row("🔑  Token", f"{token}")
 
-    # Параметры загрузки
+    # Загрузка  
     table.add_section()
     table.add_row("🎼  Quality", f"{quality}")
     table.add_row("🎏  Skip Existing", f"{skip_existing}")
     table.add_row("📁  Directory", f"{download_dir}")
     table.add_row("📝  Stick to Artist", f"{stick_to_artist}")
+    table.add_row("🎵  Only Music", f"{only_music}")
 
-    # Параметры обложки и текста
+    # Метаданные
     table.add_section()
     table.add_row("📷  Embed Cover", f"{embed_cover}")
     table.add_row("🖼️  Cover Resolution", f"{cover_resolution}")
     table.add_row("📝  Lyrics Format", f"{lyrics_format}")
+    table.add_row("🏷️  Tags Compatibility", f"{tags_compatibility}")
 
     # Сеть
     table.add_section()
@@ -111,4 +119,4 @@ def main(
 
 def run():
     # Запуск приложения с зарегистрированными флагами и командами
-    app()
+    typer.run(main)

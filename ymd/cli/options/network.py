@@ -10,6 +10,7 @@ RequestsDelayOption = Annotated[
         "--delay",
         help="Задержка между запросами к API (в миллисекундах)",
         show_default=True,
+        metavar="Секунды",
         rich_help_panel=HelpPanels.network,
     )
 ]
@@ -20,6 +21,7 @@ ResponseTimeoutOption = Annotated[
         "--response-timeout",
         help="Максимальное время ожидания ответа от API (в секундах) - Если есть сетевые ошибки - увеличьте это значение",
         show_default=True,
+        metavar="Секунды",
         min=0,
         rich_help_panel=HelpPanels.network,
     )
