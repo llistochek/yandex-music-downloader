@@ -1,5 +1,5 @@
 import sys
 
-from .cli import main
+from ymd.cli.main import run
 
-sys.exit(main())
+sys.exit(run())

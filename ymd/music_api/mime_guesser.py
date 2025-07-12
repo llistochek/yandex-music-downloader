@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Optional
 
 
 class MimeType(Enum):
@@ -13,7 +12,7 @@ MAGIC_BYTES = (
 )
 
 
-def guess_mime_type(data: bytes) -> Optional[MimeType]:
+def guess_mime_type(data: bytes) -> MimeType | None:
     for mime_type, magic_bytes in MAGIC_BYTES:
         if data.startswith(magic_bytes):
             return mime_type
