@@ -346,10 +346,10 @@ def main(
 
     📚 Примеры использования:
 
-    ymd https://music.yandex.ru/album/123456 --token YOUR_TOKEN
-    ymd https://music.yandex.ru/artist/123456 --token YOUR_TOKEN
-    ymd https://music.yandex.ru/album/123456/track/789012 --token YOUR_TOKEN
-    ymd https://music.yandex.ru/users/username/playlists/123456 --token YOUR_TOKEN
+    yandex-music-downloader https://music.yandex.ru/album/123456 --token YOUR_TOKEN
+    yandex-music-downloader https://music.yandex.ru/artist/123456 --token YOUR_TOKEN
+    yandex-music-downloader https://music.yandex.ru/album/123456/track/789012 --token YOUR_TOKEN
+    yandex-music-downloader https://music.yandex.ru/users/username/playlists/123456 --token YOUR_TOKEN
 
     ✅ Внимание! Для получения ссылок в нужном формате используйте кнопку 
        "Поделиться" в самой Яндекс Музыке. 
