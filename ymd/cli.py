@@ -246,6 +246,12 @@ def main():
                 if volumes := full_album.volumes:
                     yield from itertools.chain.from_iterable(volumes)
 
+    def playlist_tracks_gen(tracks: list[Track]) -> Generator[Track]:
+        for i in range(0, len(tracks), FETCH_PAGE_SIZE):
+            yield from client.tracks(
+                [track.id for track in tracks[i : i + FETCH_PAGE_SIZE]]
+            )
+
     total_track_count = None
     if args.artist_id is not None:
 
@@ -299,33 +305,18 @@ def main():
         total_track_count = 1
 
     elif args.liked_tracks:
-        def playlist_tracks_gen() -> Generator[Track]:
-            tracks_list: TracksList = client.users_likes_tracks()
-            nonlocal total_track_count
-            total_track_count = len(tracks_list)
-            tracks: list[Track] = tracks_list.fetch_tracks()
-            
+        tracks_list: TracksList = client.users_likes_tracks()
+        total_track_count = len(tracks_list)
+        tracks: list[Track] = tracks_list.fetch_tracks()
 
-            for i in range(0, len(tracks), FETCH_PAGE_SIZE):
-                yield from client.tracks(
-                    [track.id for track in tracks[i : i + FETCH_PAGE_SIZE]]
-                )
-
-        result_tracks = playlist_tracks_gen()
+        result_tracks = playlist_tracks_gen(tracks)
 
     elif args.playlist_id is not None:
         user, kind = args.playlist_id.split("/")
         playlist = typing.cast(Playlist, client.users_playlists(kind, user))
         total_track_count = playlist.track_count
 
-        def playlist_tracks_gen() -> Generator[Track]:
-            tracks = playlist.fetch_tracks()
-            for i in range(0, len(tracks), FETCH_PAGE_SIZE):
-                yield from client.tracks(
-                    [track.id for track in tracks[i : i + FETCH_PAGE_SIZE]]
-                )
-
-        result_tracks = playlist_tracks_gen()
+        result_tracks = playlist_tracks_gen(playlist.fetch_tracks())
     else:
         raise ValueError("Invalid ID argument")
 
