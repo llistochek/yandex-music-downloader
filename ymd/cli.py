@@ -62,6 +62,10 @@ def lyrics_format_arg(astr: str) -> core.LyricsFormat:
         raise ArgumentTypeError(f"Допустимые значения: {','.join(core.LyricsFormat)}")
 
 
+def get_artists(track: Track) -> str:
+    return ", ".join(map(lambda x: x['name'],track.artists))
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Загрузчик музыки с сервиса Яндекс.Музыка",
@@ -321,7 +325,7 @@ def main():
             progress_status = f"[{track_counter}/{total_track_count}] "
 
         if not track.available:
-            print(f"{progress_status}Трек {track.title} не доступен для скачивания")
+            print(f"{progress_status}Трек {track.title} - {get_artists(track)} не доступен для скачивания")
             continue
 
         save_path = args.dir / core.prepare_base_path(
