@@ -325,7 +325,7 @@ def main():
             progress_status = f"[{track_counter}/{total_track_count}] "
 
         if not track.available:
-            print(f"{progress_status}Трек {track.title} - {get_artists(track)} не доступен для скачивания")
+            print(f"{progress_status}Трек {get_artists(track)} - {track.title} не доступен для скачивания")
             continue
 
         save_path = args.dir / core.prepare_base_path(
