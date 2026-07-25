@@ -47,7 +47,7 @@ from ymd.api import (
 from ymd.mime_utils import MimeType, guess_mime_type
 
 UNSAFE_PATH_CLEAR_RE = re.compile(r"[/\\]+")
-SAFE_PATH_CLEAR_RE = re.compile(r"([^\w\-\'() ]|^\s+|\s+$)")
+SAFE_PATH_CLEAR_RE = re.compile(r"([^\w\-\'(). ]|^\s+|\s+$)")
 
 DEFAULT_PATH_PATTERN = Path("#album-artist", "#album", "#number - #title")
 DEFAULT_COVER_RESOLUTION = 400
@@ -146,16 +146,58 @@ def prepare_base_path(
             album_artist = artists[0]
     if artists := track.artists:
         track_artist = artists[0]
+    is_multi_disc = False
+    if album and getattr(album, "volumes", None) and len(album.volumes) > 1:
+        is_multi_disc = True
+    elif track_position and track_position.volume and track_position.volume > 1:
+        is_multi_disc = True
+
+    has_disc_placeholder = (
+        "#disc-number" in path_str or "#disc-number-padded" in path_str
+    )
+
+    disc_number_val = None
+    disc_number_padded_val = None
+    number_val = None
+    number_padded_val = None
+
+    if track_position and track_position.volume is not None:
+        disc_number_val = str(track_position.volume)
+        disc_count = (
+            len(album.volumes)
+            if album and getattr(album, "volumes", None)
+            else track_position.volume
+        )
+        disc_pad_len = max(2, len(str(disc_count)))
+        disc_number_padded_val = str(track_position.volume).zfill(disc_pad_len)
+
+    if track_position and track_position.index is not None:
+        index_str = str(track_position.index)
+        max_track_count = (
+            max(len(v) for v in album.volumes)
+            if album and getattr(album, "volumes", None)
+            else (album.track_count if album and album.track_count else None)
+        )
+        pad_length = len(str(max_track_count)) if max_track_count else 2
+        padded_index_str = index_str.zfill(pad_length)
+
+        if is_multi_disc and not has_disc_placeholder and track_position.volume:
+            number_val = f"{track_position.volume}.{index_str}"
+            number_padded_val = f"{track_position.volume}.{padded_index_str}"
+        else:
+            number_val = index_str
+            number_padded_val = padded_index_str
+
     repl_dict: dict[str, Union[str, int, None]] = {
-        "#number-padded": str(track_position.index).zfill(len(str(album.track_count)))
-        if track_position and album
-        else None,
+        "#number-padded": number_padded_val,
+        "#number": number_val,
+        "#disc-number-padded": disc_number_padded_val,
+        "#disc-number": disc_number_val,
         "#album-artist": album_artist.name if album_artist else None,
         "#track-artist": track_artist.name if track_artist else None,
         "#artist-id": track_artist.id if track_artist else None,
         "#album-id": album.id if album else None,
         "#track-id": track.id,
-        "#number": track_position.index if track_position else None,
         "#title": full_title(track),
         "#album": full_title(album) if album else None,
         "#year": album.year if album else None,

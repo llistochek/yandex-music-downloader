@@ -193,7 +193,8 @@ def main():
         help=show_default(
             "Поддерживает следующие заполнители:"
             " #number, #track-artist, #album-artist, #title,"
-            " #album, #year, #artist-id, #album-id, #track-id, #number-padded"
+            " #album, #year, #artist-id, #album-id, #track-id, #number-padded,"
+            " #disc-number, #disc-number-padded"
         ),
     )
 
@@ -246,7 +247,11 @@ def main():
         for album_id in album_ids:
             if full_album := client.albums_with_tracks(album_id):
                 if volumes := full_album.volumes:
-                    yield from itertools.chain.from_iterable(volumes)
+                    for volume in volumes:
+                        for track in volume:
+                            if track.albums:
+                                track.albums[0].volumes = volumes
+                            yield track
 
     total_track_count = None
     if args.artist_id is not None:
