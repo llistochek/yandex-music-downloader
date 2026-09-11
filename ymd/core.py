@@ -1,6 +1,7 @@
 import datetime as dt
 import hashlib
 import re
+import subprocess
 import sys
 import time
 import typing
@@ -40,6 +41,7 @@ from yandex_music.exceptions import NetworkError
 from ymd import api, text_utils
 from ymd.api import (
     ApiTrackQuality,
+    Codec,
     Container,
     CustomDownloadInfo,
     get_download_info,
@@ -86,6 +88,8 @@ class DownloadableTrack:
     download_info: CustomDownloadInfo
     path: Path
     track: Track
+    # Container of the saved file; differs from download_info's when remuxing
+    container: Container
 
 
 @dataclass
@@ -369,22 +373,68 @@ def download_track(
     download_info = track_info.download_info
     track_data = api.download_track(client, download_info)
 
-    write_via_temporary_file(
-        track_data,
-        target_path,
-        temporary_file_hook=lambda tmp_path: set_tags(
+    def finalize(tmp_path: Path) -> None:
+        if track_info.container != download_info.file_format.container:
+            remux_to_flac(tmp_path)
+        set_tags(
             tmp_path,
             track,
-            download_info.file_format.container,
+            track_info.container,
             text_lyrics,
             cover,
             compatibility_level,
-        ),
+        )
+
+    write_via_temporary_file(
+        track_data,
+        target_path,
+        temporary_file_hook=finalize,
     )
 
 
+class RemuxError(Exception):
+    pass
+
+
+def remux_to_flac(path: Path) -> None:
+    """Rewrite an MP4 file holding a FLAC stream as a native FLAC file, in place.
+
+    Stream copy only: the audio frames are moved as-is, nothing is re-encoded.
+    """
+    remuxed = path.with_name(path.name + ".flac")
+    try:
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-nostdin",
+                "-loglevel",
+                "error",
+                "-y",
+                "-i",
+                str(path),
+                "-map",
+                "0:a:0",
+                "-map_metadata",
+                "-1",
+                "-fflags",
+                "+bitexact",
+                "-c:a",
+                "copy",
+                "-f",
+                "flac",
+                str(remuxed),
+            ],
+            check=True,
+        )
+        remuxed.replace(path)
+    except subprocess.CalledProcessError as e:
+        raise RemuxError(f"ffmpeg exited with code {e.returncode}") from e
+    finally:
+        remuxed.unlink(missing_ok=True)
+
+
 def to_downloadable_track(
-    track: Track, quality: CoreTrackQuality, base_path: Path
+    track: Track, quality: CoreTrackQuality, base_path: Path, remux_flac: bool = False
 ) -> DownloadableTrack:
     api_quality = ApiTrackQuality.NORMAL
     if quality == CoreTrackQuality.LOW:
@@ -396,6 +446,12 @@ def to_downloadable_track(
 
     download_info = get_download_info(track, api_quality)
     container = download_info.file_format.container
+    if (
+        remux_flac
+        and container == Container.MP4
+        and download_info.file_format.codec == Codec.FLAC
+    ):
+        container = Container.FLAC
 
     if container == Container.MP3:
         suffix = ".mp3"
@@ -411,6 +467,7 @@ def to_downloadable_track(
         download_info=download_info,
         track=track,
         path=Path(target_path),
+        container=container,
     )
 
 
@@ -427,8 +484,8 @@ def write_via_temporary_file(
         temporary_file.write_bytes(data)
         if temporary_file_hook is not None:
             temporary_file_hook(temporary_file)
-    except InterruptedError as e:
-        temporary_file.unlink()
-        raise e
+    except BaseException:
+        temporary_file.unlink(missing_ok=True)
+        raise
     temporary_file.rename(target_path)
     return target_path

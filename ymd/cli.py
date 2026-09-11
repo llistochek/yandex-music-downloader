@@ -3,6 +3,7 @@ import argparse
 import itertools
 import logging
 import re
+import shutil
 import time
 from argparse import ArgumentTypeError
 from collections.abc import Callable, Generator, Iterable
@@ -81,6 +82,11 @@ def main():
     )
     common_group.add_argument(
         "--skip-existing", action="store_true", help="Пропускать уже загруженные треки"
+    )
+    common_group.add_argument(
+        "--remux-flac",
+        action="store_true",
+        help="Перепаковывать FLAC из MP4 (.m4a) в .flac без перекодирования (требует ffmpeg)",
     )
     common_group.add_argument(
         "--lyrics-format",
@@ -206,6 +212,8 @@ def main():
     )
 
     args = parser.parse_args()
+    if args.remux_flac and shutil.which("ffmpeg") is None:
+        parser.error("--remux-flac требует ffmpeg в PATH")
 
     logging.basicConfig(
         format="%(asctime)s |%(levelname)s| %(name)s: %(message)s",
@@ -342,20 +350,28 @@ def main():
         if not save_dir.is_dir():
             save_dir.mkdir(parents=True)
 
-        downloadable = core.to_downloadable_track(track, args.quality, save_path)
+        downloadable = core.to_downloadable_track(
+            track, args.quality, save_path, args.remux_flac
+        )
         bitrate = downloadable.download_info.bitrate
         format_info = "[" + downloadable.download_info.file_format.codec.name
         if bitrate > 0:
             format_info += f" {bitrate}kbps"
         format_info += "]"
         print(f"{progress_status}{format_info} Загружается {downloadable.path}")
-        core.download_track(
-            track_info=downloadable,
-            lyrics_format=args.lyrics_format,
-            embed_cover=args.embed_cover,
-            cover_resolution=args.cover_resolution,
-            covers_cache=covers_cache,
-            compatibility_level=args.compatibility_level,
-        )
+        try:
+            core.download_track(
+                track_info=downloadable,
+                lyrics_format=args.lyrics_format,
+                embed_cover=args.embed_cover,
+                cover_resolution=args.cover_resolution,
+                covers_cache=covers_cache,
+                compatibility_level=args.compatibility_level,
+            )
+        except core.RemuxError:
+            print(
+                f"{progress_status}Трек {get_artists(track)} - {track.title} пропущен: не удалось перепаковать FLAC"
+            )
+            continue
         if args.delay > 0:
             time.sleep(args.delay)
