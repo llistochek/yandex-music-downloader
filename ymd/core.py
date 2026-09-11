@@ -208,11 +208,11 @@ def set_tags(
     iso8601_release_date = None
     release_year: Optional[str] = None
     if album.release_date is not None:
-        iso8601_release_date = dt.datetime.fromisoformat(album.release_date).astimezone(
-            dt.timezone.utc
-        )
-        release_year = str(iso8601_release_date.year)
-        iso8601_release_date = iso8601_release_date.strftime("%Y-%m-%d %H:%M:%S")
+        # Date only, in Yandex's own timezone: converting midnight +03:00 to UTC
+        # shifted it to the previous day, and players often can't parse a time part
+        release_date = dt.datetime.fromisoformat(album.release_date).date()
+        release_year = str(release_date.year)
+        iso8601_release_date = release_date.isoformat()
     if year := album.year:
         release_year = str(year)
     track_url = f"https://music.yandex.ru/album/{album.id}/track/{track.id}"
