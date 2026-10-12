@@ -34,6 +34,7 @@
     - Название альбома
     - Текст песни (при использовании флага `--add-lyrics`)
 - Загрузка треков в lossless качестве
+- Перепаковка FLAC из MP4 (`.m4a`) в `.flac` без перекодирования (флаг `--remux-flac`, требуется [ffmpeg](https://ffmpeg.org/))
 - Поддержка паттерна для пути сохранения музыки
 
 ## Установка
@@ -54,6 +55,11 @@ https://ym.marshal.dev/token/#implicit-oauth
 yandex-music-downloader --token "<Токен>" --quality 2 --url "https://music.yandex.ru/artist/208167"
 ```
 
+### Скачать альбом [Nevermind](https://music.yandex.ru/album/294912) в FLAC, сохраняя файлы в `.flac`, а не `.m4a` (требуется ffmpeg)
+```
+yandex-music-downloader --token "<Токен>" --quality 2 --remux-flac --url "https://music.yandex.ru/album/294912"
+```
+
 ### Скачать альбом [Nevermind](https://music.yandex.ru/album/294912) в высоком качестве, загружая тексты песен в формате LRC (с временными метками)
 ```
 yandex-music-downloader --token "<Токен>" --quality 1 --lyrics-format lrc --url "https://music.yandex.ru/album/294912"
@@ -67,6 +73,7 @@ yandex-music-downloader --token "<Токен>" --url "https://music.yandex.ru/al
 ## Использование
 ```
 usage: yandex-music-downloader [-h] [--quality <Качество>] [--skip-existing]
+                               [--remux-flac]
                                [--lyrics-format {none,text,lrc}]
                                [--embed-cover]
                                [--cover-resolution <Разрешение обложки>]
@@ -92,6 +99,7 @@ options:
                         2 - Лучшее (FLAC)
                         (по умолчанию: 0)
   --skip-existing       Пропускать уже загруженные треки
+  --remux-flac          Перепаковывать FLAC из MP4 (.m4a) в .flac без перекодирования (требует ffmpeg)
   --lyrics-format {none,text,lrc}
                         Формат текста песни (по умолчанию: none)
   --embed-cover         Встраивать обложку в аудиофайл
